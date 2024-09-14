@@ -8,7 +8,7 @@ Made by Pranav Verma.
 ```./scripts/install.sh```
 
 ## Compile
-```cd build```
+```mkdir build && cd build```
 ```cmake ..```
 ```make```
 
