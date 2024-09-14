@@ -1,0 +1,6 @@
+/github/Blue-Lagoon/build/CMakeFiles/intrinsics_gen.dir
+/github/Blue-Lagoon/build/CMakeFiles/omp_gen.dir
+/github/Blue-Lagoon/build/CMakeFiles/acc_gen.dir
+/github/Blue-Lagoon/build/CMakeFiles/blue_lagoon.dir
+/github/Blue-Lagoon/build/CMakeFiles/edit_cache.dir
+/github/Blue-Lagoon/build/CMakeFiles/rebuild_cache.dir

@@ -1,47 +1,30 @@
-#ifndef AST_H
-#define AST_H
+// src/ast.h
+#pragma once
 
-#include "llvm/IR/Value.h"
-#include <string>
-#include <vector>  // <-- Add this to include std::vector.
-#include <memory>
+#include <llvm/IR/Value.h>
 
-// Base class for all expression nodes.
-class ExprAST {
+class ASTNode {
 public:
-    virtual ~ExprAST() = default;
-
-    // Declare codegen method that derived classes must implement.
+    virtual ~ASTNode() = default;
     virtual llvm::Value* codegen() = 0;
 };
 
-// Expression class for numeric literals like "1.0".
-class NumberExprAST : public ExprAST {
-    double Val;
+class IntegerNode : public ASTNode {
 public:
-    NumberExprAST(double Val) : Val(Val) {}
-
+    IntegerNode(int value);
     llvm::Value* codegen() override;
+
+private:
+    int m_value;
 };
 
-// Expression class for referencing a variable, like "a".
-class VariableExprAST : public ExprAST {
-    std::string Name;
+class BinaryOpNode : public ASTNode {
 public:
-    VariableExprAST(const std::string &Name) : Name(Name) {}
-
+    BinaryOpNode(char op, std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right);
     llvm::Value* codegen() override;
+
+private:
+    char m_op;
+    std::unique_ptr<ASTNode> m_left;
+    std::unique_ptr<ASTNode> m_right;
 };
-
-// Expression class for function calls.
-class CallExprAST : public ExprAST {
-    std::string Callee;
-    std::vector<std::unique_ptr<ExprAST>> Args;  // <-- Ensure this is std::vector.
-public:
-    CallExprAST(const std::string &Callee, std::vector<std::unique_ptr<ExprAST>> Args)
-        : Callee(Callee), Args(std::move(Args)) {}  // <-- Args is now a vector.
-
-    llvm::Value* codegen() override;
-};
-
-#endif
