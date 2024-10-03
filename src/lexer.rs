@@ -121,7 +121,7 @@ impl<'a> Lexer<'a> {
         let mut string = String::new();
         while let Some(&ch) = self.input.peek() {
             if ch == '"' {
-                self.input.next();  // Consume the closing quote
+                self.input.next(); 
                 break;
             }
             string.push(ch);

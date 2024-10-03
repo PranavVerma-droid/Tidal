@@ -3,6 +3,8 @@
 A Language Made using Rust and LLVM. <br>
 Made by Pranav Verma.
 
+Uses the Extension `.bl`
+
 ## Download
 The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)
 
