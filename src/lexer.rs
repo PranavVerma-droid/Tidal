@@ -1,6 +1,10 @@
+use std::str::Chars;
+use std::iter::Peekable;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Var,
+    NoVar,
     Print,
     Identifier(String),
     Number(i32),
@@ -12,124 +16,81 @@ pub enum Token {
     Semicolon,
     LParen,
     RParen,
+    Null,
     EOF,
 }
 
-pub struct Lexer {
-    input: String,
-    position: usize,
-    lookahead: Option<Token>, // Lookahead for peeking
+pub struct Lexer<'a> {
+    input: Peekable<Chars<'a>>,
 }
 
-impl Lexer {
-    pub fn new(input: String) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
         Lexer {
-            input,
-            position: 0,
-            lookahead: None,
+            input: input.chars().peekable(),
         }
     }
 
     pub fn next_token(&mut self) -> Token {
-        if let Some(token) = self.lookahead.take() {
-            return token;
-        }
-
         self.skip_whitespace();
-        if self.position >= self.input.len() {
-            return Token::EOF;
-        }
 
-        let current_char = self.current_char();
-
-        match current_char {
-            '0'..='9' => return self.read_number(),
-            '+' => {
-                self.advance();
-                return Token::Plus;
-            }
-            '-' => {
-                self.advance();
-                return Token::Minus;
-            }
-            '*' => {
-                self.advance();
-                return Token::Multiply;
-            }
-            '/' => {
-                self.advance();
-                return Token::Divide;
-            }
-            '=' => {
-                self.advance();
-                return Token::Assign;
-            }
-            ';' => {
-                self.advance();
-                return Token::Semicolon;
-            }
-            '(' => {
-                self.advance();
-                return Token::LParen;
-            }
-            ')' => {
-                self.advance();
-                return Token::RParen;
-            }
-            _ => {
-                if self.is_alpha(current_char) {
-                    let identifier = self.read_identifier();
-                    return match identifier.as_str() {
-                        "var" => Token::Var,
-                        "print" => Token::Print,
-                        _ => Token::Identifier(identifier),
-                    };
-                } else {
-                    panic!("Unexpected character: {}", current_char);
-                }
-            }
+        match self.input.next() {
+            Some(ch) => match ch {
+                '0'..='9' => self.read_number(ch),
+                '+' => Token::Plus,
+                '-' => Token::Minus,
+                '*' => Token::Multiply,
+                '/' => Token::Divide,
+                '=' => Token::Assign,
+                ';' => Token::Semicolon,
+                '(' => Token::LParen,
+                ')' => Token::RParen,
+                'a'..='z' | 'A'..='Z' | '_' => self.read_identifier(ch),
+                _ => panic!("Unexpected character: {}", ch),
+            },
+            None => Token::EOF,
         }
     }
 
-    pub fn peek_token(&mut self) -> Token {
-        if self.lookahead.is_none() {
-            self.lookahead = Some(self.next_token());
+    fn read_number(&mut self, first_digit: char) -> Token {
+        let mut number = first_digit.to_string();
+        while let Some(&ch) = self.input.peek() {
+            if ch.is_digit(10) {
+                number.push(ch);
+                self.input.next();
+            } else {
+                break;
+            }
         }
-        self.lookahead.clone().unwrap()
+        Token::Number(number.parse().unwrap())
     }
 
-    fn read_number(&mut self) -> Token {
-        let start = self.position;
-        while self.position < self.input.len() && self.current_char().is_digit(10) {
-            self.advance();
+    fn read_identifier(&mut self, first_char: char) -> Token {
+        let mut identifier = first_char.to_string();
+        while let Some(&ch) = self.input.peek() {
+            if ch.is_alphanumeric() || ch == '_' {
+                identifier.push(ch);
+                self.input.next();
+            } else {
+                break;
+            }
         }
-        let number: i32 = self.input[start..self.position].parse().unwrap();
-        Token::Number(number)
-    }
-
-    fn read_identifier(&mut self) -> String {
-        let start = self.position;
-        while self.position < self.input.len() && self.is_alpha(self.current_char()) {
-            self.advance();
+        match identifier.as_str() {
+            "var" => Token::Var,
+            "novar" => Token::NoVar,
+            "print" => Token::Print,
+            "null" => Token::Null,
+            _ => Token::Identifier(identifier),
         }
-        self.input[start..self.position].to_string()
     }
 
     fn skip_whitespace(&mut self) {
-        while self.position < self.input.len() && self.current_char().is_whitespace() {
-            self.advance();
+        while let Some(&ch) = self.input.peek() {
+            if ch.is_whitespace() {
+                self.input.next();
+            } else {
+                break;
+            }
         }
-    }
-
-    fn current_char(&self) -> char {
-        self.input.chars().nth(self.position).unwrap()
-    }
-
-    fn advance(&mut self) {
-        self.position += 1;
-    }
-
-    fn is_alpha(&self, c: char) -> bool {
-        c.is_alphabetic()
     }
 }

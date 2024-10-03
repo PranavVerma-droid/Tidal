@@ -1,22 +1,32 @@
 use crate::lexer::{Lexer, Token};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub enum Value {
+    Number(i32),
+    Null,
+}
+
 #[derive(Debug)]
 pub enum ASTNode {
     Number(i32),
+    Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
-    Var(String, Box<ASTNode>),
+    Var(String, Option<Box<ASTNode>>, bool), // String: variable name, Option<ASTNode>: value (None if not initialized), bool: is_mutable
+    Assign(String, Box<ASTNode>),
+    Identifier(String),
 }
 
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     current_token: Token,
-    symbol_table: HashMap<String, i32>, // Symbol table to store variable values
+    symbol_table: HashMap<String, bool>, // is_mutable
 }
 
-impl Parser {
-    pub fn new(mut lexer: Lexer) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(input: &'a str) -> Self {
+        let mut lexer = Lexer::new(input);
         let current_token = lexer.next_token();
         Parser {
             lexer,
@@ -29,7 +39,7 @@ impl Parser {
         if self.current_token == token {
             self.current_token = self.lexer.next_token();
         } else {
-            panic!("Unexpected token: {:?}", self.current_token);
+            panic!("Unexpected token: {:?}, expected: {:?}", self.current_token, token);
         }
     }
 
@@ -43,7 +53,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> ASTNode {
         match &self.current_token {
-            Token::Var => self.parse_var_decl(),
+            Token::Var | Token::NoVar => self.parse_var_decl(),
             Token::Identifier(_) => self.parse_assign_stmt(),
             Token::Print => self.parse_print(),
             _ => panic!("Unexpected token: {:?}", self.current_token),
@@ -56,26 +66,40 @@ impl Parser {
             self.eat(Token::Identifier(var_name.clone()));
             self.eat(Token::Assign);
             let expr = self.parse_expr();
-            let value = self.evaluate_expr(&expr); // Evaluate expression and store the result
-            self.symbol_table.insert(name.clone(), value); // Store variable in symbol table
+            
+            if !self.symbol_table.contains_key(&name) {
+                panic!("Variable not declared: {}", name);
+            }
+            
             self.eat(Token::Semicolon);
-            ASTNode::Var(name, Box::new(expr))
+            ASTNode::Assign(name, Box::new(expr))
         } else {
             panic!("Expected variable name");
         }
     }
 
     fn parse_var_decl(&mut self) -> ASTNode {
-        self.eat(Token::Var);
+        let is_mutable = self.current_token == Token::Var;
+        self.eat(if is_mutable { Token::Var } else { Token::NoVar });
+        
         if let Token::Identifier(var_name) = &self.current_token {
             let name = var_name.clone();
             self.eat(Token::Identifier(var_name.clone()));
-            self.eat(Token::Assign);
-            let expr = self.parse_expr();
-            let value = self.evaluate_expr(&expr); // Evaluate expression and store the result
-            self.symbol_table.insert(name.clone(), value); // Store variable in symbol table
+            
+            if self.symbol_table.contains_key(&name) {
+                panic!("Variable already declared: {}", name);
+            }
+            
+            let expr = if self.current_token == Token::Assign {
+                self.eat(Token::Assign);
+                Some(Box::new(self.parse_expr()))
+            } else {
+                None
+            };
+            
             self.eat(Token::Semicolon);
-            ASTNode::Var(name, Box::new(expr))
+            self.symbol_table.insert(name.clone(), is_mutable);
+            ASTNode::Var(name, expr, is_mutable)
         } else {
             panic!("Expected variable name");
         }
@@ -121,37 +145,26 @@ impl Parser {
                 self.eat(Token::Number(num));
                 ASTNode::Number(num)
             }
-            Token::Identifier(_) => self.parse_variable(),
-            _ => panic!("Unexpected token: {:?}", self.current_token),
-        }
-    }
-
-    fn parse_variable(&mut self) -> ASTNode {
-        if let Token::Identifier(var_name) = &self.current_token {
-            let name = var_name.clone();
-            self.eat(Token::Identifier(var_name.clone()));
-            let value = self.symbol_table.get(&name).cloned().unwrap_or(0);
-            ASTNode::Number(value)
-        } else {
-            panic!("Expected variable name");
-        }
-    }
-
-    fn evaluate_expr(&mut self, node: &ASTNode) -> i32 {
-        match node {
-            ASTNode::Number(value) => *value,
-            ASTNode::BinaryOp(left, token, right) => {
-                let left_val = self.evaluate_expr(left);
-                let right_val = self.evaluate_expr(right);
-                match token {
-                    Token::Plus => left_val + right_val,
-                    Token::Minus => left_val - right_val,
-                    Token::Multiply => left_val * right_val,
-                    Token::Divide => left_val / right_val,
-                    _ => panic!("Unexpected binary operator: {:?}", token),
+            Token::Identifier(var_name) => {
+                let name = var_name.clone();
+                self.eat(Token::Identifier(var_name.clone()));
+                if self.symbol_table.contains_key(&name) {
+                    ASTNode::Identifier(name)
+                } else {
+                    panic!("Variable not declared: {}", name);
                 }
             }
-            _ => panic!("Unexpected AST node: {:?}", node),
+            Token::Null => {
+                self.eat(Token::Null);
+                ASTNode::Null
+            }
+            Token::LParen => {
+                self.eat(Token::LParen);
+                let expr = self.parse_expr();
+                self.eat(Token::RParen);
+                expr
+            }
+            _ => panic!("Unexpected token: {:?}", self.current_token),
         }
     }
 }

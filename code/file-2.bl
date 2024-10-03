@@ -1,0 +1,15 @@
+var a;
+var b = 10;
+var c = 20;
+novar d = 100;
+a = 10;
+b = 10;
+c = 10;
+var x = a + b;
+print(x);
+x = a - b;
+print(x);
+x = (a + b);
+print(x);
+x = (a - b);
+print(x);

@@ -19,18 +19,10 @@ fn main() {
 
     let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
 
-    // Lexer
-    let lexer = lexer::Lexer::new(contents);
-
     // Parser
-    let mut parser = parser::Parser::new(lexer);
+    let mut parser = parser::Parser::new(&contents);
     let ast = parser.parse();
 
     // Interpreter
-    let result = interpreter::interpret(ast, is_verbose);
-
-    // Final Output
-    if let Some(value) = result {
-        println!("{}", value);
-    }
+    interpreter::interpret(ast, is_verbose);
 }
