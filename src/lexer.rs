@@ -36,6 +36,7 @@ impl<'a> Lexer<'a> {
 
         match self.input.next() {
             Some(ch) => match ch {
+                // All Token Tree Here
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
                 '-' => Token::Minus,
@@ -76,7 +77,7 @@ impl<'a> Lexer<'a> {
             }
         }
         match identifier.as_str() {
-            "var" => Token::Var,
+            "var" => Token::Var, 
             "novar" => Token::NoVar,
             "print" => Token::Print,
             "null" => Token::Null,

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
     let mut symbol_table: HashMap<String, (Value, bool)> = HashMap::new(); // (Value, is_mutable)
+    //hash_map_gen
     let mut result = None;
 
     for node in ast {
@@ -42,7 +43,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                     Value::Null => println!("null"),
                 }
             }
-            Value::Null // Return Null after printing
+            Value::Null // null after print
         }
         ASTNode::Var(name, expr, is_mutable) => {
             let value = if let Some(expr) = expr {
@@ -54,7 +55,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             if is_verbose {
                 println!("declare variable {} with {:?}", name, value);
             }
-            Value::Null // Return Null after variable declaration
+            Value::Null // null after exec
         }
         ASTNode::Assign(name, expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose);
@@ -69,7 +70,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             } else {
                 panic!("Variable not declared: {}", name);
             }
-            Value::Null // Return Null after assignment
+            Value::Null // null after assign
         }
         ASTNode::Identifier(name) => {
             if let Some((value, _)) = symbol_table.get(name) {

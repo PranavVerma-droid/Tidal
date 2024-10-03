@@ -1,5 +1,7 @@
 use crate::lexer::{Lexer, Token};
 use std::collections::HashMap;
+//ok, here we go
+
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -55,6 +57,7 @@ impl<'a> Parser<'a> {
         match &self.current_token {
             Token::Var | Token::NoVar => self.parse_var_decl(),
             Token::Identifier(_) => self.parse_assign_stmt(),
+            //please save me
             Token::Print => self.parse_print(),
             _ => panic!("Unexpected token: {:?}", self.current_token),
         }
@@ -80,6 +83,7 @@ impl<'a> Parser<'a> {
 
     fn parse_var_decl(&mut self) -> ASTNode {
         let is_mutable = self.current_token == Token::Var;
+        //TODO Add mutable count
         self.eat(if is_mutable { Token::Var } else { Token::NoVar });
         
         if let Token::Identifier(var_name) = &self.current_token {
@@ -87,6 +91,7 @@ impl<'a> Parser<'a> {
             self.eat(Token::Identifier(var_name.clone()));
             
             if self.symbol_table.contains_key(&name) {
+                //already declared
                 panic!("Variable already declared: {}", name);
             }
             
@@ -101,6 +106,10 @@ impl<'a> Parser<'a> {
             self.symbol_table.insert(name.clone(), is_mutable);
             ASTNode::Var(name, expr, is_mutable)
         } else {
+            //at this point, the compiler is compiling the compiler which will be
+            //compiling itself
+
+            //please dont listen to anything I say.
             panic!("Expected variable name");
         }
     }
@@ -119,6 +128,7 @@ impl<'a> Parser<'a> {
         if self.current_token == Token::Plus || self.current_token == Token::Minus {
             let op = self.current_token.clone();
             self.eat(self.current_token.clone());
+            // TODO clone here
             let right = self.parse_expr();
             ASTNode::BinaryOp(Box::new(left), op, Box::new(right))
         } else {
@@ -151,6 +161,7 @@ impl<'a> Parser<'a> {
                 if self.symbol_table.contains_key(&name) {
                     ASTNode::Identifier(name)
                 } else {
+                    //not declered here
                     panic!("Variable not declared: {}", name);
                 }
             }
