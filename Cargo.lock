@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "blue_lagoon"
-version = "0.1.0"
+name = "bl"
+version = "1.2.0"

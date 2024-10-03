@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
     let mut symbol_table: HashMap<String, (Value, bool)> = HashMap::new(); // (Value, is_mutable)
-    //hash_map_gen
     let mut result = None;
 
     for node in ast {
@@ -16,6 +15,7 @@ pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
 fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, bool)>, is_verbose: bool) -> Value {
     match node {
         ASTNode::Number(val) => Value::Number(*val),
+        ASTNode::String(val) => Value::String(val.clone()),
         ASTNode::Null => Value::Null,
         ASTNode::BinaryOp(left, op, right) => {
             let left_val = interpret_node(left, symbol_table, is_verbose);
@@ -27,10 +27,22 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         crate::lexer::Token::Minus => l - r,
                         crate::lexer::Token::Multiply => l * r,
                         crate::lexer::Token::Divide => l / r,
-                        _ => panic!("Unsupported operator"),
+                        _ => panic!("Unsupported operator for numbers"),
                     })
                 }
-                _ => Value::Null,
+                (Value::String(s), Value::String(t)) => {
+                    match op {
+                        crate::lexer::Token::Plus => Value::String(s + &t),
+                        _ => panic!("Unsupported operator for strings"),
+                    }
+                }
+                (Value::String(s), Value::Number(n)) => {
+                    match op {
+                        crate::lexer::Token::Multiply => Value::String(s.repeat(n as usize)),
+                        _ => panic!("Unsupported operator for string and number"),
+                    }
+                }
+                _ => panic!("Unsupported operation for given types"),
             }
         }
         ASTNode::Print(expr) => {
@@ -40,6 +52,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             } else {
                 match value {
                     Value::Number(n) => println!("{}", n),
+                    Value::String(s) => println!("{}", s),
                     Value::Null => println!("null"),
                 }
             }
@@ -77,6 +90,20 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 value.clone()
             } else {
                 panic!("Variable not found: {}", name);
+            }
+        }
+
+        ASTNode::Index(expr, index) => {
+            let value = interpret_node(expr, symbol_table, is_verbose);
+            let index = interpret_node(index, symbol_table, is_verbose);
+            match (value, index) {
+                (Value::String(s), Value::Number(i)) => {
+                    if i < 0 || i >= s.len() as i32 {
+                        panic!("Index is Out of Bounds");
+                    }
+                    Value::String(s.chars().nth(i as usize).unwrap().to_string())
+                }
+                _ => panic!("Invalid Indexing Oper."),
             }
         }
     }

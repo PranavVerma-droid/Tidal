@@ -8,6 +8,7 @@ pub enum Token {
     Print,
     Identifier(String),
     Number(i32),
+    String(String),
     Plus,
     Minus,
     Multiply,
@@ -16,6 +17,8 @@ pub enum Token {
     Semicolon,
     LParen,
     RParen,
+    LBracket,
+    RBracket, 
     Null,
     EOF,
 }
@@ -36,7 +39,6 @@ impl<'a> Lexer<'a> {
 
         match self.input.next() {
             Some(ch) => match ch {
-                // All Token Tree Here
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
                 '-' => Token::Minus,
@@ -46,6 +48,9 @@ impl<'a> Lexer<'a> {
                 ';' => Token::Semicolon,
                 '(' => Token::LParen,
                 ')' => Token::RParen,
+                '[' => Token::LBracket,
+                ']' => Token::RBracket,  
+                '"' => self.read_string(),
                 'a'..='z' | 'A'..='Z' | '_' => self.read_identifier(ch),
                 _ => panic!("Unexpected character: {}", ch),
             },
@@ -83,6 +88,19 @@ impl<'a> Lexer<'a> {
             "null" => Token::Null,
             _ => Token::Identifier(identifier),
         }
+    }
+
+    fn read_string(&mut self) -> Token {
+        let mut string = String::new();
+        while let Some(&ch) = self.input.peek() {
+            if ch == '"' {
+                self.input.next();  // Consume the closing quote
+                break;
+            }
+            string.push(ch);
+            self.input.next();
+        }
+        Token::String(string)
     }
 
     fn skip_whitespace(&mut self) {

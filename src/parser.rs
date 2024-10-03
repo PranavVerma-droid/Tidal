@@ -1,29 +1,30 @@
 use crate::lexer::{Lexer, Token};
 use std::collections::HashMap;
-//ok, here we go
-
 
 #[derive(Debug, Clone)]
 pub enum Value {
     Number(i32),
+    String(String),
     Null,
 }
 
 #[derive(Debug)]
 pub enum ASTNode {
     Number(i32),
+    String(String),
     Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
-    Var(String, Option<Box<ASTNode>>, bool), // String: variable name, Option<ASTNode>: value (None if not initialized), bool: is_mutable
+    Var(String, Option<Box<ASTNode>>, bool),
     Assign(String, Box<ASTNode>),
     Identifier(String),
+    Index(Box<ASTNode>, Box<ASTNode>), 
 }
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
-    symbol_table: HashMap<String, bool>, // is_mutable
+    symbol_table: HashMap<String, bool>,
 }
 
 impl<'a> Parser<'a> {
@@ -57,7 +58,7 @@ impl<'a> Parser<'a> {
         match &self.current_token {
             Token::Var | Token::NoVar => self.parse_var_decl(),
             Token::Identifier(_) => self.parse_assign_stmt(),
-            //please save me
+            //please save me please oh god
             Token::Print => self.parse_print(),
             _ => panic!("Unexpected token: {:?}", self.current_token),
         }
@@ -78,6 +79,7 @@ impl<'a> Parser<'a> {
             ASTNode::Assign(name, Box::new(expr))
         } else {
             panic!("Expected variable name");
+            // TODO lexer to parser mut here
         }
     }
 
@@ -149,11 +151,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_factor(&mut self) -> ASTNode {
-        match &self.current_token {
+        let mut node = match &self.current_token {
             Token::Number(val) => {
                 let num = *val;
                 self.eat(Token::Number(num));
                 ASTNode::Number(num)
+            }
+            Token::String(val) => {
+                let s = val.clone();
+                self.eat(Token::String(s.clone()));
+                ASTNode::String(s)
             }
             Token::Identifier(var_name) => {
                 let name = var_name.clone();
@@ -161,7 +168,6 @@ impl<'a> Parser<'a> {
                 if self.symbol_table.contains_key(&name) {
                     ASTNode::Identifier(name)
                 } else {
-                    //not declered here
                     panic!("Variable not declared: {}", name);
                 }
             }
@@ -176,6 +182,16 @@ impl<'a> Parser<'a> {
                 expr
             }
             _ => panic!("Unexpected token: {:?}", self.current_token),
+        };
+
+        // Check for indexing
+        if self.current_token == Token::LBracket {
+            self.eat(Token::LBracket);
+            let index = self.parse_expr();
+            self.eat(Token::RBracket);
+            node = ASTNode::Index(Box::new(node), Box::new(index));
         }
+
+        node
     }
 }
