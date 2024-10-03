@@ -12,15 +12,15 @@ pub enum ASTNode {
 pub struct Parser {
     lexer: Lexer,
     current_token: Token,
-    symbol_table: HashMap<String, i32>,  // Symbol table to store variable values
+    symbol_table: HashMap<String, i32>, // Symbol table to store variable values
 }
 
 impl Parser {
     pub fn new(mut lexer: Lexer) -> Self {
         let current_token = lexer.next_token();
-        Parser { 
-            lexer, 
-            current_token, 
+        Parser {
+            lexer,
+            current_token,
             symbol_table: HashMap::new(),
         }
     }
@@ -56,8 +56,8 @@ impl Parser {
             self.eat(Token::Identifier(var_name.clone()));
             self.eat(Token::Assign);
             let expr = self.parse_expr();
-            let value = self.evaluate_expr(&expr);  // Evaluate expression and store the result
-            self.symbol_table.insert(name.clone(), value);  // Store variable in symbol table
+            let value = self.evaluate_expr(&expr); // Evaluate expression and store the result
+            self.symbol_table.insert(name.clone(), value); // Store variable in symbol table
             self.eat(Token::Semicolon);
             ASTNode::Var(name, Box::new(expr))
         } else {
@@ -72,8 +72,8 @@ impl Parser {
             self.eat(Token::Identifier(var_name.clone()));
             self.eat(Token::Assign);
             let expr = self.parse_expr();
-            let value = self.evaluate_expr(&expr);  // Evaluate expression and store the result
-            self.symbol_table.insert(name.clone(), value);  // Store variable in symbol table
+            let value = self.evaluate_expr(&expr); // Evaluate expression and store the result
+            self.symbol_table.insert(name.clone(), value); // Store variable in symbol table
             self.eat(Token::Semicolon);
             ASTNode::Var(name, Box::new(expr))
         } else {
@@ -130,8 +130,8 @@ impl Parser {
         if let Token::Identifier(var_name) = &self.current_token {
             let name = var_name.clone();
             self.eat(Token::Identifier(var_name.clone()));
-            let value = self.symbol_table.get(&name).cloned().unwrap_or(0);  
-            ASTNode::Number(value)  
+            let value = self.symbol_table.get(&name).cloned().unwrap_or(0);
+            ASTNode::Number(value)
         } else {
             panic!("Expected variable name");
         }

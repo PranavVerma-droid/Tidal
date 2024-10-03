@@ -15,7 +15,7 @@ pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<i32> {
                 if is_verbose {
                     println!("call print({})", evaluated_value); // For Verbose Output
                 } else {
-                    println!("{}", evaluated_value);  // Result Print
+                    println!("{}", evaluated_value); // Result Print
                 }
             }
             _ => panic!("Unexpected AST node"), // not expected AST Node: Flag 1

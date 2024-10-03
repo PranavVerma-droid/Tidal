@@ -1,9 +1,9 @@
 use std::env;
 use std::fs;
 
+mod interpreter;
 mod lexer;
 mod parser;
-mod interpreter;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -17,8 +17,7 @@ fn main() {
 
     let filename = &args[1];
 
-    let contents = fs::read_to_string(filename)
-        .expect("Something went wrong reading the file");
+    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
 
     // Lexer
     let lexer = lexer::Lexer::new(contents);
@@ -31,7 +30,7 @@ fn main() {
     let result = interpreter::interpret(ast, is_verbose);
 
     // Final Output
-     if let Some(value) = result {
+    if let Some(value) = result {
         println!("{}", value);
-    } 
+    }
 }

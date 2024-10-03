@@ -1,22 +1,25 @@
 # Blue Lagoon
 
-A Language Made using LLVM, C, and C++. <br>
+A Language Made using Rust and LLVM. <br>
 Made by Pranav Verma.
 
-## Dependencies
+## Download
+The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)
+
+## Syntax
+The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Directory.
+
+## Development (Linux or WSL)
+
+### Dependencies
 ```chmod +x scripts/install.sh``` <br>
 ```./scripts/install.sh```
 
-## Compile
+### Compile
 ```cargo build --release``` <br>
 
-The Latest Compiled Build Can Also Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases)
+### Run
+```./target/release/blue_lagoon <FILENAME.bl> -v```
 
 
-## Run
-```./target/release/blue_lagoon <FILENAME.bl>```
-
-## Syntax
-
-- Define Variables Either with 'var < VariableName >' or just '< VariableName >' (Dynamically Typed)
 
