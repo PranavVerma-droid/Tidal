@@ -1,4 +1,6 @@
 var a = 10;
-b = 40;
+var b = 40;
+var c = 10;
+
 print(a + b);
 print(a - b);

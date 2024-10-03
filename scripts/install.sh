@@ -8,6 +8,6 @@ sudo apt install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-de
 
 sudo apt-get install llvm clang
 
-sudo apt install llvm-14 llvm-14-dev cmake
+sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 sudo apt-get install -y linux-image-generic

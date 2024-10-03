@@ -8,10 +8,15 @@ Made by Pranav Verma.
 ```./scripts/install.sh```
 
 ## Compile
-```mkdir build && cd build```<br>
-```cmake ..```<br>
-```make```
+```cargo build --release``` <br>
+
+The Latest Compiled Build Can Also Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases)
+
 
 ## Run
-```./blue_lagoon```
+```./target/release/blue_lagoon <FILENAME.bl>```
+
+## Syntax
+
+- Define Variables Either with 'var < VariableName >' or just '< VariableName >' (Dynamically Typed)
 

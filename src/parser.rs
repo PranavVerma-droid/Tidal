@@ -85,8 +85,6 @@ impl Parser {
         self.eat(Token::Print);
         self.eat(Token::LParen);
         let expr = self.parse_expr();
-        let value = self.evaluate_expr(&expr);  // Evaluate the expression for printing
-        println!("{}", value);  // Output the result
         self.eat(Token::RParen);
         self.eat(Token::Semicolon);
         ASTNode::Print(Box::new(expr))
@@ -132,14 +130,13 @@ impl Parser {
         if let Token::Identifier(var_name) = &self.current_token {
             let name = var_name.clone();
             self.eat(Token::Identifier(var_name.clone()));
-            let value = self.symbol_table.get(&name).cloned().unwrap_or(0);  // Fetch variable value
-            ASTNode::Number(value)  // Return value of the variable
+            let value = self.symbol_table.get(&name).cloned().unwrap_or(0);  
+            ASTNode::Number(value)  
         } else {
             panic!("Expected variable name");
         }
     }
 
-    // Evaluate AST nodes to compute results
     fn evaluate_expr(&mut self, node: &ASTNode) -> i32 {
         match node {
             ASTNode::Number(value) => *value,
