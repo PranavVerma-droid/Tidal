@@ -37,6 +37,10 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
+        if self.skip_comment() {
+            return self.next_token();
+        }
+
         match self.input.next() {
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
@@ -87,6 +91,29 @@ impl<'a> Lexer<'a> {
             "print" => Token::Print,
             "null" => Token::Null,
             _ => Token::Identifier(identifier),
+        }
+    }
+
+    fn skip_comment(&mut self) -> bool {
+        if self.input.next_if(|&ch| ch == '/').is_some() && self.input.next_if(|&ch| ch == '*').is_some() {
+            let mut depth = 1;
+            while depth > 0 {
+                match (self.input.next(), self.input.peek()) {
+                    (Some('*'), Some(&'/')) => {
+                        self.input.next();
+                        depth -= 1;
+                    },
+                    (Some('/'), Some(&'*')) => {
+                        self.input.next();
+                        depth += 1;
+                    },
+                    (Some(_), _) => {},
+                    (None, _) => panic!("Unterminated comment"),
+                }
+            }
+            true
+        } else {
+            false
         }
     }
 
