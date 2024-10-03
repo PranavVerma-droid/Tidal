@@ -11,7 +11,7 @@ fn main() {
     let is_verbose = args.contains(&"--verbose".to_string()) || args.contains(&"-v".to_string());
 
     if args.len() < 2 {
-        eprintln!("Usage: blue_lagoon <file.bl> [--verbose | -v]");
+        eprintln!("Usage: bl <file.bl> [--verbose | -v]");
         std::process::exit(1);
     }
 

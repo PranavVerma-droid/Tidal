@@ -19,7 +19,7 @@ The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Dir
 ```cargo build --release``` <br>
 
 ### Run
-```./target/release/blue_lagoon <FILENAME.bl> -v```
+```./target/release/bl <FILENAME.bl> -v```
 
 
 
