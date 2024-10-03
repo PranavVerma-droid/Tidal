@@ -99,7 +99,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             match (value, index) {
                 (Value::String(s), Value::Number(i)) => {
                     if i < 0 || i >= s.len() as i32 {
-                        panic!("Index is Out of Bounds");
+                        panic!("Bruh Moment: Index is Out of Bounds");
                     }
                     Value::String(s.chars().nth(i as usize).unwrap().to_string())
                 }
