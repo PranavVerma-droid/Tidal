@@ -5,15 +5,16 @@ use std::collections::HashMap;
 pub enum Value {
     Number(i32),
     String(String),
-    Boolean(bool),  // New value type for booleans
+    Boolean(bool),
     Null,
+    Type(String), 
 }
 
 #[derive(Debug)]
 pub enum ASTNode {
     Number(i32),
     String(String),
-    Boolean(bool),  // New AST node for booleans
+    Boolean(bool),
     Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
@@ -21,7 +22,9 @@ pub enum ASTNode {
     Assign(String, Box<ASTNode>),
     Identifier(String),
     Index(Box<ASTNode>, Box<ASTNode>),
+    Type(Box<ASTNode>), 
 }
+
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
@@ -187,10 +190,17 @@ impl<'a> Parser<'a> {
                 self.eat(Token::RParen);
                 expr
             }
+            Token::Type => {
+                self.eat(Token::Type);
+                self.eat(Token::LParen);
+                let expr = self.parse_expr();
+                self.eat(Token::RParen);
+                ASTNode::Type(Box::new(expr))
+            }
             _ => panic!("Unexpected token: {:?}", self.current_token),
         };
 
-        // Check for indexing
+        
         if self.current_token == Token::LBracket {
             self.eat(Token::LBracket);
             let index = self.parse_expr();

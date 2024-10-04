@@ -54,8 +54,9 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 match value {
                     Value::Number(n) => println!("{}", n),
                     Value::String(s) => println!("{}", s),
-                    Value::Boolean(b) => println!("{}", b),  // New case for printing boolean values
+                    Value::Boolean(b) => println!("{}", b),
                     Value::Null => println!("null"),
+                    Value::Type(t) => println!("{}", t), 
                 }
             }
             Value::Null // null after print
@@ -107,6 +108,21 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 }
                 _ => panic!("Invalid Indexing Oper."),
             }
+        }
+
+        ASTNode::Type(expr) => {
+            let value = interpret_node(expr, symbol_table, is_verbose);
+            let type_str = match value {
+                Value::Number(_) => "<int>",
+                Value::String(_) => "<str>",
+                Value::Boolean(_) => "<bool>",
+                Value::Null => "<null>",
+                Value::Type(_) => "<type>",
+            };
+            if is_verbose {
+                println!("call type({:?}) = {}", value, type_str);
+            }
+            Value::Type(type_str.to_string())
         }
     }
 }
