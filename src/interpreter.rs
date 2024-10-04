@@ -1,4 +1,5 @@
 use crate::parser::{ASTNode, Value};
+use crate::lexer::Token;
 use std::collections::HashMap;
 
 pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
@@ -23,24 +24,40 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             let right_val = interpret_node(right, symbol_table, is_verbose);
             match (left_val, right_val) {
                 (Value::Number(l), Value::Number(r)) => {
-                    Value::Number(match op {
-                        crate::lexer::Token::Plus => l + r,
-                        crate::lexer::Token::Minus => l - r,
-                        crate::lexer::Token::Multiply => l * r,
-                        crate::lexer::Token::Divide => l / r,
+                    match op {
+                        Token::Plus => Value::Number(l + r),
+                        Token::Minus => Value::Number(l - r),
+                        Token::Multiply => Value::Number(l * r),
+                        Token::Divide => Value::Number(l / r),
+                        Token::Equal => Value::Boolean(l == r),
+                        Token::NotEqual => Value::Boolean(l != r),
+                        Token::Greater => Value::Boolean(l > r),
+                        Token::Less => Value::Boolean(l < r),
+                        Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::LessEqual => Value::Boolean(l <= r),
                         _ => panic!("Unsupported operator for numbers"),
-                    })
+                    }
                 }
                 (Value::String(s), Value::String(t)) => {
                     match op {
-                        crate::lexer::Token::Plus => Value::String(s + &t),
+                        Token::Plus => Value::String(s + &t),
+                        Token::Equal => Value::Boolean(s == t),
+                        Token::NotEqual => Value::Boolean(s != t),
                         _ => panic!("Unsupported operator for strings"),
                     }
                 }
-                (Value::String(s), Value::Number(n)) => {
+                (Value::Boolean(b1), Value::Boolean(b2)) => {
                     match op {
-                        crate::lexer::Token::Multiply => Value::String(s.repeat(n as usize)),
-                        _ => panic!("Unsupported operator for string and number"),
+                        Token::Equal => Value::Boolean(b1 == b2),
+                        Token::NotEqual => Value::Boolean(b1 != b2),
+                        _ => panic!("Unsupported operator for booleans"),
+                    }
+                }
+                (Value::Type(t1), Value::Type(t2)) => {
+                    match op {
+                        Token::Equal => Value::Boolean(t1 == t2),
+                        Token::NotEqual => Value::Boolean(t1 != t2),
+                        _ => panic!("Unsupported operator for types"),
                     }
                 }
                 _ => panic!("Unsupported operation for given types"),
@@ -56,7 +73,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                     Value::String(s) => println!("{}", s),
                     Value::Boolean(b) => println!("{}", b),
                     Value::Null => println!("null"),
-                    Value::Type(t) => println!("{}", t), 
+                    Value::Type(t) => println!("{}", t),
                 }
             }
             Value::Null // null after print
@@ -95,34 +112,61 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 panic!("Variable not found: {}", name);
             }
         }
-
         ASTNode::Index(expr, index) => {
             let value = interpret_node(expr, symbol_table, is_verbose);
             let index = interpret_node(index, symbol_table, is_verbose);
             match (value, index) {
                 (Value::String(s), Value::Number(i)) => {
                     if i < 0 || i >= s.len() as i32 {
-                        panic!("Bruh Moment: Index is Out of Bounds");
+                        panic!("Index out of bounds");
                     }
                     Value::String(s.chars().nth(i as usize).unwrap().to_string())
                 }
-                _ => panic!("Invalid Indexing Oper."),
+                _ => panic!("Invalid indexing operation"),
             }
         }
-
         ASTNode::Type(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose);
             let type_str = match value {
-                Value::Number(_) => "<int>",
-                Value::String(_) => "<str>",
-                Value::Boolean(_) => "<bool>",
-                Value::Null => "<null>",
-                Value::Type(_) => "<type>",
+                Value::Number(_) => "int",
+                Value::String(_) => "str",
+                Value::Boolean(_) => "bool",
+                Value::Null => "null",
+                Value::Type(_) => "type",
             };
             if is_verbose {
                 println!("call type({:?}) = {}", value, type_str);
             }
             Value::Type(type_str.to_string())
+        }
+        ASTNode::TypeLiteral(type_name) => Value::Type(type_name.clone()),
+        ASTNode::If(condition, if_block, elif_blocks, else_block) => {
+            let condition_value = interpret_node(condition, symbol_table, is_verbose);
+            if let Value::Boolean(true) = condition_value {
+                for stmt in if_block {
+                    interpret_node(stmt, symbol_table, is_verbose);
+                }
+            } else {
+                let mut executed = false;
+                for (elif_condition, elif_statements) in elif_blocks {
+                    let elif_condition_value = interpret_node(elif_condition, symbol_table, is_verbose);
+                    if let Value::Boolean(true) = elif_condition_value {
+                        for stmt in elif_statements {
+                            interpret_node(stmt, symbol_table, is_verbose);
+                        }
+                        executed = true;
+                        break;
+                    }
+                }
+                if !executed {
+                    if let Some(else_statements) = else_block {
+                        for stmt in else_statements {
+                            interpret_node(stmt, symbol_table, is_verbose);
+                        }
+                    }
+                }
+            }
+            Value::Null
         }
     }
 }

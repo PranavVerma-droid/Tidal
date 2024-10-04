@@ -13,8 +13,8 @@ fn main() {
     // verbose
     let is_verbose = args.contains(&String::from("--verbose")) || args.contains(&String::from("-v"));
 
-    if args.len() < 2 {
-        eprintln!("Usage: bl <file.bl> [--verbose | -v]");
+    if args.len() < 2 || args.contains(&String::from("help")) || args.contains(&String::from("--help")) || args.contains(&String::from("-h")) {
+        help();
         std::process::exit(1);
     }
 
@@ -43,4 +43,16 @@ fn main() {
 
     // Interpreter
     interpreter::interpret(ast, is_verbose);
+
+    fn help() {
+        println!("");
+        println!("Blue Lagoon Programming Language");
+        println!("Made by Pranav Verma - For the Lagoon Project.");
+        println!("");
+        println!("Usage: bl <file.bl> [--verbose | -v]");
+        println!("Options:");
+        println!("  --verbose, -v      Enable verbose output");
+        println!("  help, --help, -h   Display this help message");
+        println!("");
+    }
 }

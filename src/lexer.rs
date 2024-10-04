@@ -7,6 +7,9 @@ pub enum Token {
     NoVar,
     Print,
     Type,
+    If,
+    Elif,
+    Else,
     Identifier(String),
     Number(i32),
     String(String),
@@ -16,12 +19,21 @@ pub enum Token {
     Multiply,
     Divide,
     Assign,
+    Equal,
+    NotEqual,
+    Greater,
+    Less,
+    GreaterEqual,
+    LessEqual,
     Semicolon,
     LParen,
     RParen,
+    LBrace,
+    RBrace,
     LBracket,
     RBracket, 
     Null,
+    TypeLiteral(String),
     EOF,
 }
 
@@ -50,12 +62,41 @@ impl<'a> Lexer<'a> {
                 '-' => Token::Minus,
                 '*' => Token::Multiply,
                 '/' => Token::Divide,
-                '=' => Token::Assign,
+                '=' => {
+                    if self.input.next_if_eq(&'=').is_some() {
+                        Token::Equal
+                    } else {
+                        Token::Assign
+                    }
+                },
+                '>' => {
+                    if self.input.next_if_eq(&'=').is_some() {
+                        Token::GreaterEqual
+                    } else {
+                        Token::Greater
+                    }
+                },
+                '<' => {
+                    if self.input.next_if_eq(&'=').is_some() {
+                        Token::LessEqual
+                    } else {
+                        Token::Less
+                    }
+                },
+                '!' => {
+                    if self.input.next_if_eq(&'=').is_some() {
+                        Token::NotEqual
+                    } else {
+                        panic!("Unexpected character: !")
+                    }
+                },
                 ';' => Token::Semicolon,
                 '(' => Token::LParen,
                 ')' => Token::RParen,
+                '{' => Token::LBrace,
+                '}' => Token::RBrace,
                 '[' => Token::LBracket,
-                ']' => Token::RBracket,  
+                ']' => Token::RBracket,
                 '"' => self.read_string(),
                 'a'..='z' | 'A'..='Z' | '_' => self.read_identifier_or_keyword(ch),
                 _ => panic!("Unexpected character: {}", ch),
@@ -88,13 +129,17 @@ impl<'a> Lexer<'a> {
             }
         }
         match identifier.as_str() {
-            "var" => Token::Var, 
+            "var" => Token::Var,
             "novar" => Token::NoVar,
             "print" => Token::Print,
-            "type" => Token::Type, 
+            "type" => Token::Type,
+            "if" => Token::If,
+            "elif" => Token::Elif,
+            "else" => Token::Else,
             "null" => Token::Null,
             "true" => Token::Boolean(true),
             "false" => Token::Boolean(false),
+            "bool" | "int" | "str" => Token::TypeLiteral(identifier),
             _ => Token::Identifier(identifier),
         }
     }
