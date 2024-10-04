@@ -20,8 +20,8 @@ fn main() {
 
 
     let filename = &args[1];
-    if !filename.ends_with(".bl") {
-        eprintln!("Error: Input file must have a .bl extension");
+    if !filename.ends_with(".td") {
+        eprintln!("Error: Input file must have a .td extension");
         std::process::exit(1);
     }
 
@@ -46,10 +46,10 @@ fn main() {
 
     fn help() {
         println!("");
-        println!("Blue Lagoon Programming Language");
+        println!("Tidal Programming Language");
         println!("Made by Pranav Verma - For the Lagoon Project.");
         println!("");
-        println!("Usage: bl <file.bl> [--verbose | -v]");
+        println!("Usage: td <file.td> [--verbose | -v]");
         println!("Options:");
         println!("  --verbose, -v      Enable verbose output");
         println!("  help, --help, -h   Display this help message");

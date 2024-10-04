@@ -4,7 +4,7 @@
 A Language Made using Rust and LLVM. <br>
 Made by Pranav Verma.
 
-Uses the Extension `.bl`
+Uses the Extension `.td`
 
 ## Download
 The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)
@@ -22,7 +22,7 @@ The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Dir
 ```cargo build --release``` <br>
 
 ### Run
-```./bl <FILENAME.bl> -v```
+```./td <FILENAME.bl> -v```
 
 
 
