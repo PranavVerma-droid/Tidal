@@ -16,6 +16,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
     match node {
         ASTNode::Number(val) => Value::Number(*val),
         ASTNode::String(val) => Value::String(val.clone()),
+        ASTNode::Boolean(val) => Value::Boolean(*val),
         ASTNode::Null => Value::Null,
         ASTNode::BinaryOp(left, op, right) => {
             let left_val = interpret_node(left, symbol_table, is_verbose);
@@ -53,6 +54,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 match value {
                     Value::Number(n) => println!("{}", n),
                     Value::String(s) => println!("{}", s),
+                    Value::Boolean(b) => println!("{}", b),  // New case for printing boolean values
                     Value::Null => println!("null"),
                 }
             }

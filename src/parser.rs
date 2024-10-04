@@ -5,6 +5,7 @@ use std::collections::HashMap;
 pub enum Value {
     Number(i32),
     String(String),
+    Boolean(bool),  // New value type for booleans
     Null,
 }
 
@@ -12,15 +13,15 @@ pub enum Value {
 pub enum ASTNode {
     Number(i32),
     String(String),
+    Boolean(bool),  // New AST node for booleans
     Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
     Var(String, Option<Box<ASTNode>>, bool),
     Assign(String, Box<ASTNode>),
     Identifier(String),
-    Index(Box<ASTNode>, Box<ASTNode>), 
+    Index(Box<ASTNode>, Box<ASTNode>),
 }
-
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
@@ -161,6 +162,11 @@ impl<'a> Parser<'a> {
                 let s = val.clone();
                 self.eat(Token::String(s.clone()));
                 ASTNode::String(s)
+            }
+            Token::Boolean(val) => {
+                let b = *val;
+                self.eat(Token::Boolean(b));
+                ASTNode::Boolean(b)
             }
             Token::Identifier(var_name) => {
                 let name = var_name.clone();

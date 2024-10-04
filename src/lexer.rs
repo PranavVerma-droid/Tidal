@@ -9,6 +9,7 @@ pub enum Token {
     Identifier(String),
     Number(i32),
     String(String),
+    Boolean(bool),
     Plus,
     Minus,
     Multiply,
@@ -55,7 +56,7 @@ impl<'a> Lexer<'a> {
                 '[' => Token::LBracket,
                 ']' => Token::RBracket,  
                 '"' => self.read_string(),
-                'a'..='z' | 'A'..='Z' | '_' => self.read_identifier(ch),
+                'a'..='z' | 'A'..='Z' | '_' => self.read_identifier_or_keyword(ch),
                 _ => panic!("Unexpected character: {}", ch),
             },
             None => Token::EOF,
@@ -75,7 +76,7 @@ impl<'a> Lexer<'a> {
         Token::Number(number.parse().unwrap())
     }
 
-    fn read_identifier(&mut self, first_char: char) -> Token {
+    fn read_identifier_or_keyword(&mut self, first_char: char) -> Token {
         let mut identifier = first_char.to_string();
         while let Some(&ch) = self.input.peek() {
             if ch.is_alphanumeric() || ch == '_' {
@@ -90,6 +91,8 @@ impl<'a> Lexer<'a> {
             "novar" => Token::NoVar,
             "print" => Token::Print,
             "null" => Token::Null,
+            "true" => Token::Boolean(true),
+            "false" => Token::Boolean(false),
             _ => Token::Identifier(identifier),
         }
     }
