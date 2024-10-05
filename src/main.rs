@@ -77,6 +77,11 @@ fn preprocess_brain_rot(input: &str) -> String {
         ("bussin", "for"),
         ("sussy", "/*"),
         ("baka", "*/"),
+        ("aura +69420", "break"),
+        ("aura -69420", "continue"),
+        ("drip", "if"),
+        ("mid", "elif"),
+        ("nah", "else"),
     ].iter().cloned().collect();
 
     let mut result = String::new();
