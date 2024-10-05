@@ -6,6 +6,7 @@ pub enum Value {
     Number(i32),
     String(String),
     Boolean(bool),
+    Float(f64), 
     Null,
     Type(String),
     Break,
@@ -17,6 +18,7 @@ pub enum ASTNode {
     Number(i32),
     String(String),
     Boolean(bool),
+    Float(f64), 
     Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
@@ -239,6 +241,11 @@ impl<'a> Parser<'a> {
                 let num = *val;
                 self.eat(Token::Number(num));
                 ASTNode::Number(num)
+            }
+            Token::Float(val) => { 
+                let num = *val;
+                self.eat(Token::Float(num));
+                ASTNode::Float(num)
             }
             Token::String(val) => {
                 let s = val.clone();

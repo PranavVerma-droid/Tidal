@@ -12,6 +12,7 @@ pub enum Token {
     Else,
     Identifier(String),
     Number(i32),
+    Float(f64),
     String(String),
     Boolean(bool),
     TypeLiteral(String),
@@ -112,15 +113,24 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self, first_digit: char) -> Token {
         let mut number = first_digit.to_string();
+        let mut is_float = false;
         while let Some(&ch) = self.input.peek() {
             if ch.is_digit(10) {
+                number.push(ch);
+                self.input.next();
+            } else if ch == '.' && !is_float {
+                is_float = true;
                 number.push(ch);
                 self.input.next();
             } else {
                 break;
             }
         }
-        Token::Number(number.parse().unwrap())
+        if is_float {
+            Token::Float(number.parse().unwrap())
+        } else {
+            Token::Number(number.parse().unwrap())
+        }
     }
 
     fn read_identifier_or_keyword(&mut self, first_char: char) -> Token {
@@ -147,7 +157,7 @@ impl<'a> Lexer<'a> {
             "for" => Token::For,
             "break" => Token::Break,
             "continue" => Token::Continue,
-            "bool" | "int" | "str" => Token::TypeLiteral(identifier),
+            "bool" | "int" | "str" | "float" => Token::TypeLiteral(identifier),
             _ => Token::Identifier(identifier),
         }
     }

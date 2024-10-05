@@ -23,6 +23,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
     match node {
         ASTNode::Number(val) => Value::Number(*val),
         ASTNode::String(val) => Value::String(val.clone()),
+        ASTNode::Float(val) => Value::Float(*val),
         ASTNode::Boolean(val) => Value::Boolean(*val),
         ASTNode::Null => Value::Null,
         ASTNode::BinaryOp(left, op, right) => {
@@ -34,7 +35,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Plus => Value::Number(l + r),
                         Token::Minus => Value::Number(l - r),
                         Token::Multiply => Value::Number(l * r),
-                        Token::Divide => Value::Number(l / r),
+                        Token::Divide => Value::Float(l as f64 / r as f64),
                         Token::Equal => Value::Boolean(l == r),
                         Token::NotEqual => Value::Boolean(l != r),
                         Token::Greater => Value::Boolean(l > r),
@@ -42,6 +43,53 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::GreaterEqual => Value::Boolean(l >= r),
                         Token::LessEqual => Value::Boolean(l <= r),
                         _ => panic!("Unsupported operator for numbers"),
+                    }
+                }
+                (Value::Float(l), Value::Float(r)) => {  // New case for float operations
+                    match op {
+                        Token::Plus => Value::Float(l + r),
+                        Token::Minus => Value::Float(l - r),
+                        Token::Multiply => Value::Float(l * r),
+                        Token::Divide => Value::Float(l / r),
+                        Token::Equal => Value::Boolean(l == r),
+                        Token::NotEqual => Value::Boolean(l != r),
+                        Token::Greater => Value::Boolean(l > r),
+                        Token::Less => Value::Boolean(l < r),
+                        Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::LessEqual => Value::Boolean(l <= r),
+                        _ => panic!("Unsupported operator for floats"),
+                    }
+                }
+                (Value::Number(l), Value::Float(r)) => {  // Mixed number and float operations
+                    let l = l as f64;
+                    match op {
+                        Token::Plus => Value::Float(l + r),
+                        Token::Minus => Value::Float(l - r),
+                        Token::Multiply => Value::Float(l * r),
+                        Token::Divide => Value::Float(l / r),
+                        Token::Equal => Value::Boolean(l == r),
+                        Token::NotEqual => Value::Boolean(l != r),
+                        Token::Greater => Value::Boolean(l > r),
+                        Token::Less => Value::Boolean(l < r),
+                        Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::LessEqual => Value::Boolean(l <= r),
+                        _ => panic!("Unsupported operator for mixed number and float"),
+                    }
+                }
+                (Value::Float(l), Value::Number(r)) => {  // Mixed float and number operations
+                    let r = r as f64;
+                    match op {
+                        Token::Plus => Value::Float(l + r),
+                        Token::Minus => Value::Float(l - r),
+                        Token::Multiply => Value::Float(l * r),
+                        Token::Divide => Value::Float(l / r),
+                        Token::Equal => Value::Boolean(l == r),
+                        Token::NotEqual => Value::Boolean(l != r),
+                        Token::Greater => Value::Boolean(l > r),
+                        Token::Less => Value::Boolean(l < r),
+                        Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::LessEqual => Value::Boolean(l <= r),
+                        _ => panic!("Unsupported operator for mixed float and number"),
                     }
                 }
                 (Value::String(s), Value::String(t)) => {
@@ -78,6 +126,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                     Value::Number(n) => println!("{}", n),
                     Value::String(s) => println!("{}", s),
                     Value::Boolean(b) => println!("{}", b),
+                    Value::Float(f) => println!("{}", f),
                     Value::Null => println!("null"),
                     Value::Type(t) => println!("{}", t),
                     Value::Break => println!("break"),
@@ -139,6 +188,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 Value::Number(_) => "int",
                 Value::String(_) => "str",
                 Value::Boolean(_) => "bool",
+                Value::Float(_) => "float", 
                 Value::Null => "null",
                 Value::Type(_) => "type",
                 Value::Break => "break",

@@ -1,10 +1,10 @@
 # Tidal
 <i>PS, I have just changed the Name of the Programming Language from `Blue Lagoon` to `Tidal`, so, if you see Blue Lagoon written anywhere, just know, it was the old name of the Language!</i>
 
-A Language Made using Rust and LLVM. <br>
+A Language Made using Rust. <br>
 Made by Pranav Verma.
 
-Uses the Extension `.td`
+Uses the Extension `.td` and `.br`.
 
 ## Download
 The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)
