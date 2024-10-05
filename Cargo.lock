@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "td"
+name = "Tidal"
 version = "1.4.0"

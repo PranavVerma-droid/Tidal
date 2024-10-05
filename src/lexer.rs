@@ -55,8 +55,8 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        if self.skip_comment() {
-            return self.next_token();
+        if let Some(token) = self.handle_comment() {
+            return token;
         }
 
         match self.input.next() {
@@ -152,26 +152,33 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn skip_comment(&mut self) -> bool {
-        if self.input.next_if(|&ch| ch == '/').is_some() && self.input.next_if(|&ch| ch == '*').is_some() {
-            let mut depth = 1;
-            while depth > 0 {
-                match (self.input.next(), self.input.peek()) {
-                    (Some('*'), Some(&'/')) => {
-                        self.input.next();
-                        depth -= 1;
-                    },
-                    (Some('/'), Some(&'*')) => {
-                        self.input.next();
-                        depth += 1;
-                    },
-                    (Some(_), _) => {},
-                    (None, _) => panic!("Unterminated comment"),
-                }
+    fn handle_comment(&mut self) -> Option<Token> {
+        if self.input.next_if(|&ch| ch == '/').is_some() {
+            if self.input.next_if(|&ch| ch == '*').is_some() {
+                self.skip_multiline_comment();
+                return Some(self.next_token());
+            } else {
+                return Some(Token::Divide);
             }
-            true
-        } else {
-            false
+        }
+        None
+    }
+
+    fn skip_multiline_comment(&mut self) {
+        let mut depth = 1;
+        while depth > 0 {
+            match (self.input.next(), self.input.peek()) {
+                (Some('*'), Some(&'/')) => {
+                    self.input.next();
+                    depth -= 1;
+                },
+                (Some('/'), Some(&'*')) => {
+                    self.input.next();
+                    depth += 1;
+                },
+                (Some(_), _) => {},
+                (None, _) => panic!("Unterminated comment"),
+            }
         }
     }
 

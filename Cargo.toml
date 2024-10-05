@@ -1,6 +1,10 @@
 [package]
-name = "td"
+name = "Tidal"
 version = "1.4.0"
 edition = "2021"
 
 [dependencies]
+
+[[bin]]
+name = "td"     
+path = "src/main.rs"  

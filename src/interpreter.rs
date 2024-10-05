@@ -7,21 +7,27 @@ pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
     let mut result = None;
 
     for node in ast {
-        result = Some(interpret_node(&node, &mut symbol_table, is_verbose));
+        result = Some(interpret_node(&node, &mut symbol_table, is_verbose, false));
+        if let Value::Break = result.as_ref().unwrap() {
+            panic!("Break statement outside of loop");
+        }
+        if let Value::Continue = result.as_ref().unwrap() {
+            panic!("Continue statement outside of loop");
+        }
     }
 
     result
 }
 
-fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, bool)>, is_verbose: bool) -> Value {
+fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, bool)>, is_verbose: bool, in_loop: bool) -> Value {
     match node {
         ASTNode::Number(val) => Value::Number(*val),
         ASTNode::String(val) => Value::String(val.clone()),
         ASTNode::Boolean(val) => Value::Boolean(*val),
         ASTNode::Null => Value::Null,
         ASTNode::BinaryOp(left, op, right) => {
-            let left_val = interpret_node(left, symbol_table, is_verbose);
-            let right_val = interpret_node(right, symbol_table, is_verbose);
+            let left_val = interpret_node(left, symbol_table, is_verbose, in_loop);
+            let right_val = interpret_node(right, symbol_table, is_verbose, in_loop);
             match (left_val, right_val) {
                 (Value::Number(l), Value::Number(r)) => {
                     match op {
@@ -64,7 +70,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             }
         },
         ASTNode::Print(expr) => {
-            let value = interpret_node(expr, symbol_table, is_verbose);
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             if is_verbose {
                 println!("call print({:?})", value);
             } else {
@@ -82,7 +88,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
         },
         ASTNode::Var(name, expr, is_mutable) => {
             let value = if let Some(expr) = expr {
-                interpret_node(expr, symbol_table, is_verbose)
+                interpret_node(expr, symbol_table, is_verbose, in_loop)
             } else {
                 Value::Null
             };
@@ -91,9 +97,9 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 println!("declare variable {} with {:?}", name, value);
             }
             Value::Null
-        }
+        },
         ASTNode::Assign(name, expr) => {
-            let value = interpret_node(expr, symbol_table, is_verbose);
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             if let Some((_, is_mutable)) = symbol_table.get(name) {
                 if !is_mutable {
                     panic!("Cannot assign to immutable variable: {}", name);
@@ -106,17 +112,17 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 panic!("Variable not declared: {}", name);
             }
             Value::Null
-        }
+        },
         ASTNode::Identifier(name) => {
             if let Some((value, _)) = symbol_table.get(name) {
                 value.clone()
             } else {
                 panic!("Variable not found: {}", name);
             }
-        }
+        },
         ASTNode::Index(expr, index) => {
-            let value = interpret_node(expr, symbol_table, is_verbose);
-            let index = interpret_node(index, symbol_table, is_verbose);
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
+            let index = interpret_node(index, symbol_table, is_verbose, in_loop);
             match (value, index) {
                 (Value::String(s), Value::Number(i)) => {
                     if i < 0 || i >= s.len() as i32 {
@@ -126,9 +132,9 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 }
                 _ => panic!("Invalid indexing operation"),
             }
-        }
+        },
         ASTNode::Type(expr) => {
-            let value = interpret_node(expr, symbol_table, is_verbose);
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             let type_str = match value {
                 Value::Number(_) => "int",
                 Value::String(_) => "str",
@@ -142,21 +148,27 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 println!("call type({:?}) = {}", value, type_str);
             }
             Value::Type(type_str.to_string())
-        }
+        },
         ASTNode::TypeLiteral(type_name) => Value::Type(type_name.clone()),
         ASTNode::If(condition, if_block, elif_blocks, else_block) => {
-            let condition_value = interpret_node(condition, symbol_table, is_verbose);
+            let condition_value = interpret_node(condition, symbol_table, is_verbose, in_loop);
             if let Value::Boolean(true) = condition_value {
                 for stmt in if_block {
-                    interpret_node(stmt, symbol_table, is_verbose);
+                    let result = interpret_node(stmt, symbol_table, is_verbose, in_loop);
+                    if matches!(result, Value::Break | Value::Continue) {
+                        return result;
+                    }
                 }
             } else {
                 let mut executed = false;
                 for (elif_condition, elif_statements) in elif_blocks {
-                    let elif_condition_value = interpret_node(&elif_condition, symbol_table, is_verbose);
+                    let elif_condition_value = interpret_node(elif_condition, symbol_table, is_verbose, in_loop);
                     if let Value::Boolean(true) = elif_condition_value {
                         for stmt in elif_statements {
-                            interpret_node(stmt, symbol_table, is_verbose);
+                            let result = interpret_node(stmt, symbol_table, is_verbose, in_loop);
+                            if matches!(result, Value::Break | Value::Continue) {
+                                return result;
+                            }
                         }
                         executed = true;
                         break;
@@ -165,7 +177,10 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 if !executed {
                     if let Some(else_statements) = else_block {
                         for stmt in else_statements {
-                            interpret_node(stmt, symbol_table, is_verbose);
+                            let result = interpret_node(stmt, symbol_table, is_verbose, in_loop);
+                            if matches!(result, Value::Break | Value::Continue) {
+                                return result;
+                            }
                         }
                     }
                 }
@@ -173,35 +188,37 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             Value::Null
         },
         ASTNode::For(init, condition, update, body) => {
-            interpret_node(init, symbol_table, is_verbose);
+            interpret_node(init, symbol_table, is_verbose, true);
             loop {
-                let cond_value = interpret_node(condition, symbol_table, is_verbose);
+                let cond_value = interpret_node(condition, symbol_table, is_verbose, true);
                 if let Value::Boolean(false) = cond_value {
                     break;
                 }
                 
-                let mut should_break = false;
                 for stmt in body {
-                    let result = interpret_node(stmt, symbol_table, is_verbose);
+                    let result = interpret_node(stmt, symbol_table, is_verbose, true);
                     match result {
-                        Value::Break => {
-                            should_break = true;
-                            break;
-                        },
+                        Value::Break => return Value::Null,
                         Value::Continue => break,
                         _ => {}
                     }
                 }
                 
-                if should_break {
-                    break;
-                }
-                
-                interpret_node(update, symbol_table, is_verbose);
+                interpret_node(update, symbol_table, is_verbose, true);
             }
             Value::Null
         },
-        ASTNode::Break => Value::Break,
-        ASTNode::Continue => Value::Continue,
+        ASTNode::Break => {
+            if !in_loop {
+                panic!("Break statement outside of loop");
+            }
+            Value::Break
+        },
+        ASTNode::Continue => {
+            if !in_loop {
+                panic!("Continue statement outside of loop");
+            }
+            Value::Continue
+        },
     }
 }
