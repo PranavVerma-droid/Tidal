@@ -4,7 +4,8 @@
 A Language Made using Rust. <br>
 Made by Pranav Verma.
 
-Uses the Extension `.td` and `.br`.
+Uses the Extension `.td` and `.br`. <br>
+Please Check the [Wiki](https://github.com/PranavVerma-droid/Tidal/wiki) for more Information.
 
 ## Download
 The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)
@@ -22,7 +23,11 @@ The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Dir
 ```cargo build --release``` <br>
 
 ### Run
-```./td <FILENAME.bl> -v```
+```./td <FILENAME.td> -v```
+
+OR 
+
+```./td <FILENAME.br> -v```
 
 
 

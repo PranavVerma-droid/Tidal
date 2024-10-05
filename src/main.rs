@@ -74,6 +74,7 @@ fn preprocess_brain_rot(input: &str) -> String {
         ("no cap", ";"),
         ("skibidi", "print"),
         ("fanum tax", "type"),
+        ("bussin", "for"),
         ("sussy", "/*"),
         ("baka", "*/"),
     ].iter().cloned().collect();
