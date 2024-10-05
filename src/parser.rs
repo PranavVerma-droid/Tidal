@@ -28,6 +28,7 @@ pub enum ASTNode {
     Index(Box<ASTNode>, Box<ASTNode>),
     Type(Box<ASTNode>),
     TypeLiteral(String),
+    TypeCast(String, Box<ASTNode>),
     If(Box<ASTNode>, Vec<ASTNode>, Vec<(ASTNode, Vec<ASTNode>)>, Option<Vec<ASTNode>>),
     For(Box<ASTNode>, Box<ASTNode>, Box<ASTNode>, Vec<ASTNode>),
     Break,
@@ -236,7 +237,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) -> ASTNode {
-        let mut node = match &self.current_token {
+        match &self.current_token {
             Token::Number(val) => {
                 let num = *val;
                 self.eat(Token::Number(num));
@@ -260,7 +261,19 @@ impl<'a> Parser<'a> {
             Token::Identifier(var_name) => {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()));
-                ASTNode::Identifier(name)
+                if self.current_token == Token::LBracket {
+                    self.parse_index(ASTNode::Identifier(name))
+                } else {
+                    ASTNode::Identifier(name)
+                }
+            }
+            Token::TypeLiteral(type_name) => {
+                let name = type_name.clone();
+                self.eat(Token::TypeLiteral(name.clone()));
+                ASTNode::TypeLiteral(name)
+            }
+            Token::TypeCast(type_name) => {
+                self.parse_type_cast(type_name.clone())
             }
             Token::Null => {
                 self.eat(Token::Null);
@@ -279,22 +292,25 @@ impl<'a> Parser<'a> {
                 self.eat(Token::RParen);
                 ASTNode::Type(Box::new(expr))
             }
-            Token::TypeLiteral(type_name) => {
-                let name = type_name.clone();
-                self.eat(Token::TypeLiteral(name.clone()));
-                ASTNode::TypeLiteral(name)
-            }
             _ => panic!("Unexpected token in primary: {:?}", self.current_token),
-        };
-        while self.current_token == Token::LBracket {
-            self.eat(Token::LBracket);
-            let index = self.parse_expr();
-            self.eat(Token::RBracket);
-            node = ASTNode::Index(Box::new(node), Box::new(index));
         }
-
-        node
     }
+
+    fn parse_index(&mut self, expr: ASTNode) -> ASTNode {
+        self.eat(Token::LBracket);
+        let index = self.parse_expr();
+        self.eat(Token::RBracket);
+        ASTNode::Index(Box::new(expr), Box::new(index))
+    }
+
+    fn parse_type_cast(&mut self, type_name: String) -> ASTNode {
+        self.eat(Token::TypeCast(type_name.clone()));
+        self.eat(Token::LParen);
+        let expr = self.parse_expr();
+        self.eat(Token::RParen);
+        ASTNode::TypeCast(type_name, Box::new(expr))
+    }
+
 
     fn parse_var_decl(&mut self) -> ASTNode {
         let is_mutable = match self.current_token {

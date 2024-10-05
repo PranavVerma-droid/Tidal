@@ -117,6 +117,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 _ => panic!("Unsupported operation for given types"),
             }
         },
+        
         ASTNode::Print(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             if is_verbose {
@@ -169,6 +170,9 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 panic!("Variable not found: {}", name);
             }
         },
+        ASTNode::TypeLiteral(type_name) => {
+            Value::Type(type_name.clone())
+        },
         ASTNode::Index(expr, index) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             let index = interpret_node(index, symbol_table, is_verbose, in_loop);
@@ -199,7 +203,53 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             }
             Value::Type(type_str.to_string())
         },
-        ASTNode::TypeLiteral(type_name) => Value::Type(type_name.clone()),
+        ASTNode::TypeCast(type_name, expr) => {
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
+            match type_name.as_str() {
+                "int" => match value {
+                    Value::Number(n) => Value::Number(n),
+                    Value::Float(f) => Value::Number(f as i32),
+                    Value::String(s) => {
+                        if s.chars().all(|c| c.is_digit(10)) {
+                            Value::Number(s.parse::<i32>().unwrap())
+                        } else {
+                            panic!("Cannot convert string '{}' to int", s)
+                        }
+                    },
+                    Value::Boolean(b) => Value::Number(if b { 1 } else { 0 }),
+                    _ => panic!("Cannot convert to int"),
+                },
+                "str" => match value {
+                    Value::Number(n) => Value::String(n.to_string()),
+                    Value::Float(f) => Value::String(f.to_string()),
+                    Value::String(s) => Value::String(s),
+                    Value::Boolean(b) => Value::String(b.to_string()),
+                    Value::Null => Value::String("null".to_string()),
+                    _ => panic!("Cannot convert to string"),
+                },
+                "float" => match value {
+                    Value::Number(n) => Value::Float(n as f64),
+                    Value::Float(f) => Value::Float(f),
+                    Value::String(s) => {
+                        match s.parse::<f64>() {
+                            Ok(f) => Value::Float(f),
+                            Err(_) => panic!("Cannot convert string '{}' to float", s),
+                        }
+                    },
+                    Value::Boolean(b) => Value::Float(if b { 1.0 } else { 0.0 }),
+                    _ => panic!("Cannot convert to float"),
+                },
+                "bool" => match value {
+                    Value::Number(n) => Value::Boolean(n != 0),
+                    Value::Float(f) => Value::Boolean(f != 0.0),
+                    Value::String(s) => Value::Boolean(!s.is_empty()),
+                    Value::Boolean(b) => Value::Boolean(b),
+                    Value::Null => Value::Boolean(false),
+                    _ => panic!("Cannot convert to bool"),
+                },
+                _ => panic!("Unknown type cast: {}", type_name),
+            }
+        },
         ASTNode::If(condition, if_block, elif_blocks, else_block) => {
             let condition_value = interpret_node(condition, symbol_table, is_verbose, in_loop);
             if let Value::Boolean(true) = condition_value {

@@ -16,6 +16,7 @@ pub enum Token {
     String(String),
     Boolean(bool),
     TypeLiteral(String),
+    TypeCast(String),
     Plus,
     Minus,
     Multiply,
@@ -157,7 +158,13 @@ impl<'a> Lexer<'a> {
             "for" => Token::For,
             "break" => Token::Break,
             "continue" => Token::Continue,
-            "bool" | "int" | "str" | "float" => Token::TypeLiteral(identifier),
+            "int" | "str" | "float" | "bool" => {
+                if self.input.peek() == Some(&'(') {
+                    Token::TypeCast(identifier)
+                } else {
+                    Token::TypeLiteral(identifier)
+                }
+            },
             _ => Token::Identifier(identifier),
         }
     }
