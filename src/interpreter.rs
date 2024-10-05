@@ -62,7 +62,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 }
                 _ => panic!("Unsupported operation for given types"),
             }
-        }
+        },
         ASTNode::Print(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose);
             if is_verbose {
@@ -74,10 +74,12 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                     Value::Boolean(b) => println!("{}", b),
                     Value::Null => println!("null"),
                     Value::Type(t) => println!("{}", t),
+                    Value::Break => println!("break"),
+                    Value::Continue => println!("continue"),
                 }
             }
-            Value::Null // null after print
-        }
+            Value::Null
+        },
         ASTNode::Var(name, expr, is_mutable) => {
             let value = if let Some(expr) = expr {
                 interpret_node(expr, symbol_table, is_verbose)
@@ -88,7 +90,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             if is_verbose {
                 println!("declare variable {} with {:?}", name, value);
             }
-            Value::Null // null after exec
+            Value::Null
         }
         ASTNode::Assign(name, expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose);
@@ -103,7 +105,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             } else {
                 panic!("Variable not declared: {}", name);
             }
-            Value::Null // null after assign
+            Value::Null
         }
         ASTNode::Identifier(name) => {
             if let Some((value, _)) = symbol_table.get(name) {
@@ -133,6 +135,8 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 Value::Boolean(_) => "bool",
                 Value::Null => "null",
                 Value::Type(_) => "type",
+                Value::Break => "break",
+                Value::Continue => "continue",
             };
             if is_verbose {
                 println!("call type({:?}) = {}", value, type_str);
@@ -149,7 +153,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             } else {
                 let mut executed = false;
                 for (elif_condition, elif_statements) in elif_blocks {
-                    let elif_condition_value = interpret_node(elif_condition, symbol_table, is_verbose);
+                    let elif_condition_value = interpret_node(&elif_condition, symbol_table, is_verbose);
                     if let Value::Boolean(true) = elif_condition_value {
                         for stmt in elif_statements {
                             interpret_node(stmt, symbol_table, is_verbose);
@@ -167,6 +171,37 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 }
             }
             Value::Null
-        }
+        },
+        ASTNode::For(init, condition, update, body) => {
+            interpret_node(init, symbol_table, is_verbose);
+            loop {
+                let cond_value = interpret_node(condition, symbol_table, is_verbose);
+                if let Value::Boolean(false) = cond_value {
+                    break;
+                }
+                
+                let mut should_break = false;
+                for stmt in body {
+                    let result = interpret_node(stmt, symbol_table, is_verbose);
+                    match result {
+                        Value::Break => {
+                            should_break = true;
+                            break;
+                        },
+                        Value::Continue => break,
+                        _ => {}
+                    }
+                }
+                
+                if should_break {
+                    break;
+                }
+                
+                interpret_node(update, symbol_table, is_verbose);
+            }
+            Value::Null
+        },
+        ASTNode::Break => Value::Break,
+        ASTNode::Continue => Value::Continue,
     }
 }

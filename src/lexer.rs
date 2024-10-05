@@ -14,6 +14,7 @@ pub enum Token {
     Number(i32),
     String(String),
     Boolean(bool),
+    TypeLiteral(String),
     Plus,
     Minus,
     Multiply,
@@ -33,7 +34,10 @@ pub enum Token {
     LBracket,
     RBracket, 
     Null,
-    TypeLiteral(String),
+    For,
+    Break,
+    Continue,
+    Comma,
     EOF,
 }
 
@@ -56,6 +60,7 @@ impl<'a> Lexer<'a> {
         }
 
         match self.input.next() {
+            Some(',') => Token::Comma,
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
@@ -139,6 +144,9 @@ impl<'a> Lexer<'a> {
             "null" => Token::Null,
             "true" => Token::Boolean(true),
             "false" => Token::Boolean(false),
+            "for" => Token::For,
+            "break" => Token::Break,
+            "continue" => Token::Continue,
             "bool" | "int" | "str" => Token::TypeLiteral(identifier),
             _ => Token::Identifier(identifier),
         }

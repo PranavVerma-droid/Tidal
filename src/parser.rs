@@ -8,6 +8,8 @@ pub enum Value {
     Boolean(bool),
     Null,
     Type(String),
+    Break,
+    Continue,
 }
 
 #[derive(Debug)]
@@ -25,6 +27,9 @@ pub enum ASTNode {
     Type(Box<ASTNode>),
     TypeLiteral(String),
     If(Box<ASTNode>, Vec<ASTNode>, Vec<(ASTNode, Vec<ASTNode>)>, Option<Vec<ASTNode>>),
+    For(Box<ASTNode>, Box<ASTNode>, Box<ASTNode>, Vec<ASTNode>),
+    Break,
+    Continue,
 }
 
 pub struct Parser<'a> {
@@ -66,8 +71,21 @@ impl<'a> Parser<'a> {
             Token::Identifier(_) => self.parse_assign_stmt(),
             Token::Print => self.parse_print(),
             Token::If => self.parse_if_statement(),
+            Token::For => self.parse_for_loop(),
+            Token::Break => self.parse_break(),
+            Token::Continue => self.parse_continue(),
+            Token::Type => self.parse_type(),
             _ => panic!("Unexpected token in statement: {:?}", self.current_token),
         }
+    }
+
+    fn parse_type(&mut self) -> ASTNode {
+        self.eat(Token::Type);
+        self.eat(Token::LParen);
+        let expr = self.parse_expr();
+        self.eat(Token::RParen);
+        self.eat(Token::Semicolon);
+        ASTNode::Type(Box::new(expr))
     }
 
     fn parse_if_statement(&mut self) -> ASTNode {
@@ -101,6 +119,41 @@ impl<'a> Parser<'a> {
         }
 
         ASTNode::If(Box::new(condition), if_block, elif_blocks, else_block)
+    }
+
+    fn parse_for_loop(&mut self) -> ASTNode {
+        self.eat(Token::For);
+        self.eat(Token::LParen);
+        
+        let init = if let Token::Var | Token::NoVar = self.current_token {
+            self.parse_var_decl()
+        } else {
+            self.parse_assign_stmt()
+        };
+        
+        let condition = self.parse_expr();
+        self.eat(Token::Semicolon);
+        
+        let update = self.parse_assign_stmt();
+        self.eat(Token::RParen);
+
+        self.eat(Token::LBrace);
+        let body = self.parse_block();
+        self.eat(Token::RBrace);
+
+        ASTNode::For(Box::new(init), Box::new(condition), Box::new(update), body)
+    }
+    
+    fn parse_break(&mut self) -> ASTNode {
+        self.eat(Token::Break);
+        self.eat(Token::Semicolon);
+        ASTNode::Break
+    }
+
+    fn parse_continue(&mut self) -> ASTNode {
+        self.eat(Token::Continue);
+        self.eat(Token::Semicolon);
+        ASTNode::Continue
     }
 
     fn parse_block(&mut self) -> Vec<ASTNode> {
@@ -226,60 +279,62 @@ impl<'a> Parser<'a> {
             }
             _ => panic!("Unexpected token in primary: {:?}", self.current_token),
         };
-    
         while self.current_token == Token::LBracket {
             self.eat(Token::LBracket);
             let index = self.parse_expr();
             self.eat(Token::RBracket);
             node = ASTNode::Index(Box::new(node), Box::new(index));
         }
-    
+
         node
     }
+
     fn parse_var_decl(&mut self) -> ASTNode {
-        let is_mutable = self.current_token == Token::Var;
-        self.eat(if is_mutable { Token::Var } else { Token::NoVar });
-        
-        if let Token::Identifier(var_name) = &self.current_token {
-            let name = var_name.clone();
-            self.eat(Token::Identifier(name.clone()));
-            
-            if self.symbol_table.contains_key(&name) {
-                panic!("Variable already declared: {}", name);
-            }
-            
-            let expr = if self.current_token == Token::Assign {
-                self.eat(Token::Assign);
-                Some(Box::new(self.parse_expr()))
-            } else {
-                None
-            };
-            
-            self.eat(Token::Semicolon);
-            self.symbol_table.insert(name.clone(), is_mutable);
-            ASTNode::Var(name, expr, is_mutable)
+        let is_mutable = match self.current_token {
+            Token::Var => true,
+            Token::NoVar => false,
+            _ => panic!("Expected var or novar"),
+        };
+        self.eat(self.current_token.clone());
+
+        let name = if let Token::Identifier(ident) = self.current_token.clone() {
+            self.eat(Token::Identifier(ident.clone()));
+            ident
         } else {
-            panic!("Expected variable name, got: {:?}", self.current_token);
-        }
+            panic!("Expected identifier in variable declaration");
+        };
+
+        // Use the symbol_table here
+        self.symbol_table.insert(name.clone(), is_mutable);
+
+        let initializer = if self.current_token == Token::Assign {
+            self.eat(Token::Assign);
+            Some(Box::new(self.parse_expr()))
+        } else {
+            None
+        };
+
+        self.eat(Token::Semicolon);
+        ASTNode::Var(name, initializer, is_mutable)
     }
 
     fn parse_assign_stmt(&mut self) -> ASTNode {
-        if let Token::Identifier(var_name) = &self.current_token {
-            let name = var_name.clone();
-            self.eat(Token::Identifier(name.clone()));
-            self.eat(Token::Assign);
-            let expr = self.parse_expr();
-            
-            if !self.symbol_table.contains_key(&name) {
-                //sym bio table not dec
-                panic!("Variable not declared: {}", name);
-            }
-            
-            self.eat(Token::Semicolon);
-            ASTNode::Assign(name, Box::new(expr))
+        let name = if let Token::Identifier(ident) = self.current_token.clone() {
+            self.eat(Token::Identifier(ident.clone()));
+            ident
         } else {
-            panic!("Expected variable name, got: {:?}", self.current_token);
+            panic!("Expected identifier in assignment, got: {:?}", self.current_token);
+        };
+
+        self.eat(Token::Assign);
+        let expr = self.parse_expr();
+        
+        // Eat the semicolon if it's present (for normal statements, not in for loops)
+        if self.current_token == Token::Semicolon {
+            self.eat(Token::Semicolon);
         }
+        
+        ASTNode::Assign(name, Box::new(expr))
     }
 
     fn parse_print(&mut self) -> ASTNode {
