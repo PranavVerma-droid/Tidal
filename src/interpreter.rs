@@ -45,7 +45,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         _ => panic!("Unsupported operator for numbers"),
                     }
                 }
-                (Value::Float(l), Value::Float(r)) => {  // New case for float operations
+                (Value::Float(l), Value::Float(r)) => { 
                     match op {
                         Token::Plus => Value::Float(l + r),
                         Token::Minus => Value::Float(l - r),
@@ -60,7 +60,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         _ => panic!("Unsupported operator for floats"),
                     }
                 }
-                (Value::Number(l), Value::Float(r)) => {  // Mixed number and float operations
+                (Value::Number(l), Value::Float(r)) => { 
                     let l = l as f64;
                     match op {
                         Token::Plus => Value::Float(l + r),
@@ -76,7 +76,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         _ => panic!("Unsupported operator for mixed number and float"),
                     }
                 }
-                (Value::Float(l), Value::Number(r)) => {  // Mixed float and number operations
+                (Value::Float(l), Value::Number(r)) => { 
                     let r = r as f64;
                     match op {
                         Token::Plus => Value::Float(l + r),
@@ -132,6 +132,24 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                     Value::Type(t) => println!("{}", t),
                     Value::Break => println!("break"),
                     Value::Continue => println!("continue"),
+                }
+            }
+            Value::Null
+        },
+        ASTNode::While(condition, body) => {
+            loop {
+                let cond_value = interpret_node(condition, symbol_table, is_verbose, true);
+                if let Value::Boolean(false) = cond_value {
+                    break;
+                }
+                
+                for stmt in body {
+                    let result = interpret_node(stmt, symbol_table, is_verbose, true);
+                    match result {
+                        Value::Break => return Value::Null,
+                        Value::Continue => break,
+                        _ => {}
+                    }
                 }
             }
             Value::Null

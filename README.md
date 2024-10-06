@@ -5,7 +5,7 @@ A Language Made using Rust. <br>
 Made by Pranav Verma.
 
 Uses the Extension `.td` and `.br`. <br>
-Please Check the [Wiki](https://github.com/PranavVerma-droid/Tidal/wiki) for more Information.
+Please Check the [Wiki](https://github.com/PranavVerma-droid/Tidal/wiki) for documentation and syntax.
 
 ## Download
 The Latest Compiled Build Can Be Found in the [Releases](https://github.com/PranavVerma-droid/Blue-Lagoon/releases) (For Windows and Linux)

@@ -31,6 +31,7 @@ pub enum ASTNode {
     TypeCast(String, Box<ASTNode>),
     If(Box<ASTNode>, Vec<ASTNode>, Vec<(ASTNode, Vec<ASTNode>)>, Option<Vec<ASTNode>>),
     For(Box<ASTNode>, Box<ASTNode>, Box<ASTNode>, Vec<ASTNode>),
+    While(Box<ASTNode>, Vec<ASTNode>),
     Break,
     Continue,
 }
@@ -77,6 +78,7 @@ impl<'a> Parser<'a> {
             Token::For => self.parse_for_loop(),
             Token::Break => self.parse_break(),
             Token::Continue => self.parse_continue(),
+            Token::While => self.parse_while_loop(),
             Token::Type => self.parse_type(),
             _ => panic!("Unexpected token in statement: {:?}", self.current_token),
         }
@@ -89,6 +91,18 @@ impl<'a> Parser<'a> {
         self.eat(Token::RParen);
         self.eat(Token::Semicolon);
         ASTNode::Type(Box::new(expr))
+    }
+
+    fn parse_while_loop(&mut self) -> ASTNode {
+        self.eat(Token::While);
+        self.eat(Token::LParen);
+        let condition = self.parse_expr();
+        self.eat(Token::RParen);
+        self.eat(Token::LBrace);
+        let body = self.parse_block();
+        self.eat(Token::RBrace);
+
+        ASTNode::While(Box::new(condition), body)
     }
 
     fn parse_if_statement(&mut self) -> ASTNode {

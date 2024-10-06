@@ -37,6 +37,7 @@ pub enum Token {
     RBracket, 
     Null,
     For,
+    While,
     Break,
     Continue,
     Comma,
@@ -156,6 +157,7 @@ impl<'a> Lexer<'a> {
             "true" => Token::Boolean(true),
             "false" => Token::Boolean(false),
             "for" => Token::For,
+            "while" => Token::While,
             "break" => Token::Break,
             "continue" => Token::Continue,
             "int" | "str" | "float" | "bool" => {

@@ -11,9 +11,10 @@ fn main() {
     // collect args
     let args: Vec<String> = env::args().collect();
 
-    // verbose
+    // verbose mode flag check
     let is_verbose = args.contains(&String::from("--verbose")) || args.contains(&String::from("-v"));
 
+    // error display lul
     if args.len() < 2 || args.contains(&String::from("help")) || args.contains(&String::from("--help")) || args.contains(&String::from("-h")) {
         help();
         std::process::exit(1);
@@ -39,7 +40,7 @@ fn main() {
 
     // Brain Rot Parser
     let processed_contents = if is_brain_rot {
-        preprocess_brain_rot(&contents)
+        preprocess_skibidi(&contents)
     } else {
         contents
     };
@@ -66,7 +67,8 @@ fn help() {
     println!("");
 }
 
-fn preprocess_brain_rot(input: &str) -> String {
+//okay, here is where the brainrot starts ☠️☠️
+fn preprocess_skibidi(input: &str) -> String {
     let replacements: HashMap<&str, &str> = [
         ("rizzler", "var"),
         ("sigma", "novar"),
@@ -75,6 +77,7 @@ fn preprocess_brain_rot(input: &str) -> String {
         ("skibidi", "print"),
         ("fanum tax", "type"),
         ("bussin", "for"),
+        ("yeet", "while"),
         ("sussy", "/*"),
         ("baka", "*/"),
         ("aura +69420", "break"),
