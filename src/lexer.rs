@@ -42,6 +42,7 @@ pub enum Token {
     Break,
     Continue,
     Comma,
+    Power,
     EOF,
 }
 
@@ -69,7 +70,14 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
                 '-' => Token::Minus,
-                '*' => Token::Multiply,
+                '*' => {
+                    if self.input.peek() == Some(&'*') {
+                        self.input.next();
+                        Token::Power
+                    } else {
+                        Token::Multiply
+                    }
+                },
                 '/' => Token::Divide,
                 '=' => {
                     if self.input.next_if_eq(&'=').is_some() {

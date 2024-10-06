@@ -43,6 +43,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::GreaterEqual => Value::Boolean(l >= r),
                         Token::LessEqual => Value::Boolean(l <= r),
                         Token::Modulus => Value::Number(l % r),
+                        Token::Power => Value::Number(l.pow(r as u32)),
                         _ => panic!("Unsupported operator for numbers"),
                     }
                 }
@@ -59,6 +60,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Less => Value::Boolean(l < r),
                         Token::GreaterEqual => Value::Boolean(l >= r),
                         Token::LessEqual => Value::Boolean(l <= r),
+                        Token::Power => Value::Float(l.powf(r)),
                         _ => panic!("Unsupported operator for floats"),
                     }
                 }
@@ -75,6 +77,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Greater => Value::Boolean(l > r),
                         Token::Less => Value::Boolean(l < r),
                         Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::Power => Value::Float(l.powf(r)),
                         Token::LessEqual => Value::Boolean(l <= r),
                         _ => panic!("Unsupported operator for mixed number and float"),
                     }
@@ -92,6 +95,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Greater => Value::Boolean(l > r),
                         Token::Less => Value::Boolean(l < r),
                         Token::GreaterEqual => Value::Boolean(l >= r),
+                        Token::Power => Value::Float(l.powf(r)),
                         Token::LessEqual => Value::Boolean(l <= r),
                         _ => panic!("Unsupported operator for mixed float and number"),
                     }

@@ -222,18 +222,31 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_term(&mut self) -> ASTNode {
-        let mut node = self.parse_factor();
+        let mut node = self.parse_power();
 
         loop {
             match &self.current_token {
                 Token::Multiply | Token::Divide | Token::Modulus => {
                     let op = self.current_token.clone();
                     self.eat(op.clone());
-                    let right = self.parse_factor();
+                    let right = self.parse_power();
                     node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
                 }
                 _ => break,
             }
+        }
+
+        node
+    }
+
+    fn parse_power(&mut self) -> ASTNode {
+        let mut node = self.parse_factor();
+
+        while self.current_token == Token::Power {
+            let op = self.current_token.clone();
+            self.eat(Token::Power);
+            let right = self.parse_power(); // Recursive call for right-associativity
+            node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
         }
 
         node
