@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
 
         loop {
             match &self.current_token {
-                Token::Multiply | Token::Divide => {
+                Token::Multiply | Token::Divide | Token::Modulus => {
                     let op = self.current_token.clone();
                     self.eat(op.clone());
                     let right = self.parse_factor();

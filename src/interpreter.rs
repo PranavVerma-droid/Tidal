@@ -42,6 +42,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Less => Value::Boolean(l < r),
                         Token::GreaterEqual => Value::Boolean(l >= r),
                         Token::LessEqual => Value::Boolean(l <= r),
+                        Token::Modulus => Value::Number(l % r),
                         _ => panic!("Unsupported operator for numbers"),
                     }
                 }
@@ -54,6 +55,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Equal => Value::Boolean(l == r),
                         Token::NotEqual => Value::Boolean(l != r),
                         Token::Greater => Value::Boolean(l > r),
+                        Token::Modulus => Value::Float(l % r),
                         Token::Less => Value::Boolean(l < r),
                         Token::GreaterEqual => Value::Boolean(l >= r),
                         Token::LessEqual => Value::Boolean(l <= r),
@@ -68,6 +70,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Multiply => Value::Float(l * r),
                         Token::Divide => Value::Float(l / r),
                         Token::Equal => Value::Boolean(l == r),
+                        Token::Modulus => Value::Float(l % r),
                         Token::NotEqual => Value::Boolean(l != r),
                         Token::Greater => Value::Boolean(l > r),
                         Token::Less => Value::Boolean(l < r),
@@ -84,6 +87,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         Token::Multiply => Value::Float(l * r),
                         Token::Divide => Value::Float(l / r),
                         Token::Equal => Value::Boolean(l == r),
+                        Token::Modulus => Value::Float(l % r),
                         Token::NotEqual => Value::Boolean(l != r),
                         Token::Greater => Value::Boolean(l > r),
                         Token::Less => Value::Boolean(l < r),
