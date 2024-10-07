@@ -221,23 +221,38 @@ impl<'a> Parser<'a> {
         node
     }
 
-    fn parse_term(&mut self) -> ASTNode {
-        let mut node = self.parse_power();
-
-        loop {
-            match &self.current_token {
-                Token::Multiply | Token::Divide | Token::Modulus => {
-                    let op = self.current_token.clone();
-                    self.eat(op.clone());
-                    let right = self.parse_power();
-                    node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
+        fn parse_term(&mut self) -> ASTNode {
+            let mut node = self.parse_power(); 
+        
+            loop {
+                match &self.current_token {
+                    Token::Multiply => {
+                        self.eat(Token::Multiply);
+                        let right = self.parse_power(); 
+                        node = ASTNode::BinaryOp(Box::new(node), Token::Multiply, Box::new(right));
+                    }
+                    Token::Divide => {
+                        self.eat(Token::Divide);
+                        if self.current_token == Token::Divide {
+                            self.eat(Token::Divide);
+                            let right = self.parse_power(); 
+                            node = ASTNode::BinaryOp(Box::new(node), Token::FloorDivide, Box::new(right));
+                        } else {
+                            let right = self.parse_power(); 
+                            node = ASTNode::BinaryOp(Box::new(node), Token::Divide, Box::new(right));
+                        }
+                    }
+                    Token::Modulus => {
+                        self.eat(Token::Modulus);
+                        let right = self.parse_power(); 
+                        node = ASTNode::BinaryOp(Box::new(node), Token::Modulus, Box::new(right));
+                    }
+                    _ => break,
                 }
-                _ => break,
             }
+        
+            node
         }
-
-        node
-    }
 
     fn parse_power(&mut self) -> ASTNode {
         let mut node = self.parse_factor();
@@ -245,7 +260,7 @@ impl<'a> Parser<'a> {
         while self.current_token == Token::Power {
             let op = self.current_token.clone();
             self.eat(Token::Power);
-            let right = self.parse_power(); // Recursive call for right-associativity
+            let right = self.parse_factor(); 
             node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
         }
 
@@ -259,7 +274,26 @@ impl<'a> Parser<'a> {
                 let factor = self.parse_factor();
                 ASTNode::BinaryOp(Box::new(ASTNode::Number(0)), Token::Minus, Box::new(factor))
             }
-            _ => self.parse_primary(),
+            Token::Number(val) => {
+                let num = *val;
+                self.eat(Token::Number(num));
+                ASTNode::Number(num)
+            }
+            Token::Float(val) => {
+                let num = *val;
+                self.eat(Token::Float(num));
+                ASTNode::Float(num)
+            }
+            Token::LParen => {
+                self.eat(Token::LParen);
+                let expr = self.parse_expr();
+                self.eat(Token::RParen);
+                expr
+            }
+            Token::Identifier(_) | Token::String(_) | Token::Boolean(_) | Token::Null | Token::TypeLiteral(_) | Token::TypeCast(_) | Token::Type => {
+                self.parse_primary()
+            }
+            _ => panic!("Unexpected token in factor: {:?}", self.current_token),
         }
     }
 
@@ -354,7 +388,7 @@ impl<'a> Parser<'a> {
             panic!("Expected identifier in variable declaration");
         };
 
-        // Use the symbol_table here
+
         self.symbol_table.insert(name.clone(), is_mutable);
 
         let initializer = if self.current_token == Token::Assign {
@@ -379,7 +413,7 @@ impl<'a> Parser<'a> {
         self.eat(Token::Assign);
         let expr = self.parse_expr();
         
-        // Eat the semicolon if it's present (for normal statements, not in for loops)
+
         if self.current_token == Token::Semicolon {
             self.eat(Token::Semicolon);
         }

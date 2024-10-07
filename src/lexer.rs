@@ -21,6 +21,7 @@ pub enum Token {
     Minus,
     Multiply,
     Divide,
+    FloorDivide,
     Modulus,
     Assign,
     Equal,
@@ -66,19 +67,26 @@ impl<'a> Lexer<'a> {
 
         match self.input.next() {
             Some(',') => Token::Comma,
+            Some('/') => {
+                if self.input.peek() == Some(&'/') {
+                    self.input.next(); 
+                    Token::FloorDivide
+                } else {
+                    Token::Divide
+                }
+            },
+            Some('*') => {
+                if self.input.peek() == Some(&'*') {
+                    self.input.next(); 
+                    Token::Power
+                } else {
+                    Token::Multiply
+                }
+            },
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
                 '-' => Token::Minus,
-                '*' => {
-                    if self.input.peek() == Some(&'*') {
-                        self.input.next();
-                        Token::Power
-                    } else {
-                        Token::Multiply
-                    }
-                },
-                '/' => Token::Divide,
                 '=' => {
                     if self.input.next_if_eq(&'=').is_some() {
                         Token::Equal
@@ -210,6 +218,7 @@ impl<'a> Lexer<'a> {
             }
         }
     }
+
 
     fn read_string(&mut self) -> Token {
         let mut string = String::new();
