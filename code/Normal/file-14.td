@@ -9,6 +9,6 @@ if (x > 0 && y < 10) {
     print("This should never happen");
 }
 
-var x = true;
+x = true;
 print(!x);
 print(!(x && false)); 

@@ -412,24 +412,27 @@ impl<'a> Parser<'a> {
             _ => panic!("Expected var or novar"),
         };
         self.eat(self.current_token.clone());
-
+    
         let name = if let Token::Identifier(ident) = self.current_token.clone() {
             self.eat(Token::Identifier(ident.clone()));
             ident
         } else {
             panic!("Expected identifier in variable declaration");
         };
-
-
+    
+        if self.symbol_table.contains_key(&name) {
+            panic!("Variable '{}' has already been declared", name);
+        }
+    
         self.symbol_table.insert(name.clone(), is_mutable);
-
+    
         let initializer = if self.current_token == Token::Assign {
             self.eat(Token::Assign);
             Some(Box::new(self.parse_expr()))
         } else {
             None
         };
-
+    
         self.eat(Token::Semicolon);
         ASTNode::Var(name, initializer, is_mutable)
     }
