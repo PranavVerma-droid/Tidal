@@ -46,6 +46,7 @@ pub enum Token {
     Power,
     And,
     Or,
+    Not,
     EOF,
 }
 
@@ -99,6 +100,13 @@ impl<'a> Lexer<'a> {
                     panic!("Unexpected character: |")
                 }
             },
+            Some('!') => {
+                if self.input.next_if_eq(&'=').is_some() {
+                    Token::NotEqual
+                } else {
+                    Token::Not
+                }
+            },
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
                 '+' => Token::Plus,
@@ -122,13 +130,6 @@ impl<'a> Lexer<'a> {
                         Token::LessEqual
                     } else {
                         Token::Less
-                    }
-                },
-                '!' => {
-                    if self.input.next_if_eq(&'=').is_some() {
-                        Token::NotEqual
-                    } else {
-                        panic!("Unexpected character: !")
                     }
                 },
                 ';' => Token::Semicolon,

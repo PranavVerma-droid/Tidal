@@ -24,6 +24,7 @@ pub enum ASTNode {
     Print(Box<ASTNode>),
     Var(String, Option<Box<ASTNode>>, bool),
     Assign(String, Box<ASTNode>),
+    UnaryOp(Token, Box<ASTNode>),
     Identifier(String),
     Index(Box<ASTNode>, Box<ASTNode>),
     Type(Box<ASTNode>),
@@ -305,6 +306,11 @@ impl<'a> Parser<'a> {
                 self.eat(Token::Number(num));
                 ASTNode::Number(num)
             }
+            Token::Not => {
+                self.eat(Token::Not);
+                let factor = self.parse_factor();
+                ASTNode::UnaryOp(Token::Not, Box::new(factor))
+            },
             Token::Float(val) => {
                 let num = *val;
                 self.eat(Token::Float(num));

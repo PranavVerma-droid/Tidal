@@ -171,6 +171,13 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
             }
             Value::Null
         },
+        ASTNode::UnaryOp(op, expr) => {
+            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
+            match (op, value) {
+                (Token::Not, Value::Boolean(b)) => Value::Boolean(!b),
+                _ => panic!("Unsupported unary operation"),
+            }
+        },
         ASTNode::While(condition, body) => {
             loop {
                 let cond_value = interpret_node(condition, symbol_table, is_verbose, true);

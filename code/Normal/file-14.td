@@ -8,3 +8,7 @@ if (x > 0 && y < 10) {
 } else {
     print("This should never happen");
 }
+
+var x = true;
+print(!x);
+print(!(x && false)); 
