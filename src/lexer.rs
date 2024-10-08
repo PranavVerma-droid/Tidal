@@ -44,6 +44,8 @@ pub enum Token {
     Continue,
     Comma,
     Power,
+    And,
+    Or,
     EOF,
 }
 
@@ -81,6 +83,20 @@ impl<'a> Lexer<'a> {
                     Token::Power
                 } else {
                     Token::Multiply
+                }
+            },
+            Some('&') => {
+                if self.input.next_if_eq(&'&').is_some() {
+                    Token::And
+                } else {
+                    panic!("Unexpected character: &")
+                }
+            },
+            Some('|') => {
+                if self.input.next_if_eq(&'|').is_some() {
+                    Token::Or
+                } else {
+                    panic!("Unexpected character: |")
                 }
             },
             Some(ch) => match ch {

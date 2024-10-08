@@ -182,7 +182,33 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ASTNode {
-        self.parse_comparison()
+        self.parse_logical_or()
+    }
+
+    fn parse_logical_or(&mut self) -> ASTNode {
+        let mut node = self.parse_logical_and();
+
+        while self.current_token == Token::Or {
+            let op = self.current_token.clone();
+            self.eat(Token::Or);
+            let right = self.parse_logical_and();
+            node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
+        }
+
+        node
+    }
+
+    fn parse_logical_and(&mut self) -> ASTNode {
+        let mut node = self.parse_comparison();
+
+        while self.current_token == Token::And {
+            let op = self.current_token.clone();
+            self.eat(Token::And);
+            let right = self.parse_comparison();
+            node = ASTNode::BinaryOp(Box::new(node), op, Box::new(right));
+        }
+
+        node
     }
 
     fn parse_comparison(&mut self) -> ASTNode {

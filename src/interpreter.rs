@@ -28,108 +28,131 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
         ASTNode::Null => Value::Null,
         ASTNode::BinaryOp(left, op, right) => {
             let left_val = interpret_node(left, symbol_table, is_verbose, in_loop);
-            let right_val = interpret_node(right, symbol_table, is_verbose, in_loop);
-            match (left_val, right_val) {
-                (Value::Number(l), Value::Number(r)) => {
-                    match op {
-                        Token::Plus => Value::Number(l + r),
-                        Token::Minus => Value::Number(l - r),
-                        Token::Multiply => Value::Number(l * r),
-                        Token::Divide => Value::Float(l as f64 / r as f64),
-                        Token::Equal => Value::Boolean(l == r),
-                        Token::NotEqual => Value::Boolean(l != r),
-                        Token::Greater => Value::Boolean(l > r),
-                        Token::Less => Value::Boolean(l < r),
-                        Token::GreaterEqual => Value::Boolean(l >= r),
-                        Token::FloorDivide => Value::Number(l / r),
-                        Token::LessEqual => Value::Boolean(l <= r),
-                        Token::Modulus => Value::Number(l % r),
-                        Token::Power => Value::Number(l.pow(r as u32)),
-                        _ => panic!("Unsupported operator for numbers"),
+            match op {
+                Token::And => {
+                    if let Value::Boolean(false) = left_val {
+                        return Value::Boolean(false);
+                    }
+                    let right_val = interpret_node(right, symbol_table, is_verbose, in_loop);
+                    match (left_val, right_val) {
+                        (Value::Boolean(l), Value::Boolean(r)) => Value::Boolean(l && r),
+                        _ => panic!("AND operator can only be applied to boolean values"),
+                    }
+                },
+                Token::Or => {
+                    if let Value::Boolean(true) = left_val {
+                        return Value::Boolean(true);
+                    }
+                    let right_val = interpret_node(right, symbol_table, is_verbose, in_loop);
+                    match (left_val, right_val) {
+                        (Value::Boolean(l), Value::Boolean(r)) => Value::Boolean(l || r),
+                        _ => panic!("OR operator can only be applied to boolean values"),
+                    }
+                },
+                _ => {
+                    let right_val = interpret_node(right, symbol_table, is_verbose, in_loop);
+                    match (left_val, right_val) {
+                        (Value::Number(l), Value::Number(r)) => {
+                            match op {
+                                Token::Plus => Value::Number(l + r),
+                                Token::Minus => Value::Number(l - r),
+                                Token::Multiply => Value::Number(l * r),
+                                Token::Divide => Value::Float(l as f64 / r as f64),
+                                Token::Equal => Value::Boolean(l == r),
+                                Token::NotEqual => Value::Boolean(l != r),
+                                Token::Greater => Value::Boolean(l > r),
+                                Token::Less => Value::Boolean(l < r),
+                                Token::GreaterEqual => Value::Boolean(l >= r),
+                                Token::FloorDivide => Value::Number(l / r),
+                                Token::LessEqual => Value::Boolean(l <= r),
+                                Token::Modulus => Value::Number(l % r),
+                                Token::Power => Value::Number(l.pow(r as u32)),
+                                _ => panic!("Unsupported operator for numbers"),
+                            }
+                        }
+                        (Value::Float(l), Value::Float(r)) => { 
+                            match op {
+                                Token::Plus => Value::Float(l + r),
+                                Token::Minus => Value::Float(l - r),
+                                Token::Multiply => Value::Float(l * r),
+                                Token::Divide => Value::Float(l / r),
+                                Token::Equal => Value::Boolean(l == r),
+                                Token::NotEqual => Value::Boolean(l != r),
+                                Token::Greater => Value::Boolean(l > r),
+                                Token::Modulus => Value::Float(l % r),
+                                Token::FloorDivide => Value::Number((l / r).floor() as i32),
+                                Token::Less => Value::Boolean(l < r),
+                                Token::GreaterEqual => Value::Boolean(l >= r),
+                                Token::LessEqual => Value::Boolean(l <= r),
+                                Token::Power => Value::Float(l.powf(r)),
+                                _ => panic!("Unsupported operator for floats"),
+                            }
+                        }
+                        (Value::Number(l), Value::Float(r)) => { 
+                            let l = l as f64;
+                            match op {
+                                Token::Plus => Value::Float(l + r),
+                                Token::Minus => Value::Float(l - r),
+                                Token::Multiply => Value::Float(l * r),
+                                Token::Divide => Value::Float(l / r),
+                                Token::Equal => Value::Boolean(l == r),
+                                Token::Modulus => Value::Float(l % r),
+                                Token::NotEqual => Value::Boolean(l != r),
+                                Token::FloorDivide => Value::Number((l / r).floor() as i32),
+                                Token::Greater => Value::Boolean(l > r),
+                                Token::Less => Value::Boolean(l < r),
+                                Token::GreaterEqual => Value::Boolean(l >= r),
+                                Token::Power => Value::Float(l.powf(r)),
+                                Token::LessEqual => Value::Boolean(l <= r),
+                                _ => panic!("Unsupported operator for mixed number and float"),
+                            }
+                        }
+                        (Value::Float(l), Value::Number(r)) => { 
+                            let r = r as f64;
+                            match op {
+                                Token::Plus => Value::Float(l + r),
+                                Token::Minus => Value::Float(l - r),
+                                Token::Multiply => Value::Float(l * r),
+                                Token::Divide => Value::Float(l / r),
+                                Token::Equal => Value::Boolean(l == r),
+                                Token::Modulus => Value::Float(l % r),
+                                Token::NotEqual => Value::Boolean(l != r),
+                                Token::Greater => Value::Boolean(l > r),
+                                Token::Less => Value::Boolean(l < r),
+                                Token::GreaterEqual => Value::Boolean(l >= r),
+                                Token::FloorDivide => Value::Number((l / r).floor() as i32),
+                                Token::Power => Value::Float(l.powf(r)),
+                                Token::LessEqual => Value::Boolean(l <= r),
+                                _ => panic!("Unsupported operator for mixed float and number"),
+                            }
+                        }
+                        (Value::String(s), Value::String(t)) => {
+                            match op {
+                                Token::Plus => Value::String(s + &t),
+                                Token::Equal => Value::Boolean(s == t),
+                                Token::NotEqual => Value::Boolean(s != t),
+                                _ => panic!("Unsupported operator for strings"),
+                            }
+                        }
+                        (Value::Boolean(b1), Value::Boolean(b2)) => {
+                            match op {
+                                Token::Equal => Value::Boolean(b1 == b2),
+                                Token::NotEqual => Value::Boolean(b1 != b2),
+                                _ => panic!("Unsupported operator for booleans"),
+                            }
+                        }
+                        (Value::Type(t1), Value::Type(t2)) => {
+                            match op {
+                                Token::Equal => Value::Boolean(t1 == t2),
+                                Token::NotEqual => Value::Boolean(t1 != t2),
+                                _ => panic!("Unsupported operator for types"),
+                            }
+                        }
+                        _ => panic!("Unsupported operation for given types"),
                     }
                 }
-                (Value::Float(l), Value::Float(r)) => { 
-                    match op {
-                        Token::Plus => Value::Float(l + r),
-                        Token::Minus => Value::Float(l - r),
-                        Token::Multiply => Value::Float(l * r),
-                        Token::Divide => Value::Float(l / r),
-                        Token::Equal => Value::Boolean(l == r),
-                        Token::NotEqual => Value::Boolean(l != r),
-                        Token::Greater => Value::Boolean(l > r),
-                        Token::Modulus => Value::Float(l % r),
-                        Token::FloorDivide => Value::Number((l / r).floor() as i32),
-                        Token::Less => Value::Boolean(l < r),
-                        Token::GreaterEqual => Value::Boolean(l >= r),
-                        Token::LessEqual => Value::Boolean(l <= r),
-                        Token::Power => Value::Float(l.powf(r)),
-                        _ => panic!("Unsupported operator for floats"),
-                    }
-                }
-                (Value::Number(l), Value::Float(r)) => { 
-                    let l = l as f64;
-                    match op {
-                        Token::Plus => Value::Float(l + r),
-                        Token::Minus => Value::Float(l - r),
-                        Token::Multiply => Value::Float(l * r),
-                        Token::Divide => Value::Float(l / r),
-                        Token::Equal => Value::Boolean(l == r),
-                        Token::Modulus => Value::Float(l % r),
-                        Token::NotEqual => Value::Boolean(l != r),
-                        Token::FloorDivide => Value::Number((l / r).floor() as i32),
-                        Token::Greater => Value::Boolean(l > r),
-                        Token::Less => Value::Boolean(l < r),
-                        Token::GreaterEqual => Value::Boolean(l >= r),
-                        Token::Power => Value::Float(l.powf(r)),
-                        Token::LessEqual => Value::Boolean(l <= r),
-                        _ => panic!("Unsupported operator for mixed number and float"),
-                    }
-                }
-                (Value::Float(l), Value::Number(r)) => { 
-                    let r = r as f64;
-                    match op {
-                        Token::Plus => Value::Float(l + r),
-                        Token::Minus => Value::Float(l - r),
-                        Token::Multiply => Value::Float(l * r),
-                        Token::Divide => Value::Float(l / r),
-                        Token::Equal => Value::Boolean(l == r),
-                        Token::Modulus => Value::Float(l % r),
-                        Token::NotEqual => Value::Boolean(l != r),
-                        Token::Greater => Value::Boolean(l > r),
-                        Token::Less => Value::Boolean(l < r),
-                        Token::GreaterEqual => Value::Boolean(l >= r),
-                        Token::FloorDivide => Value::Number((l / r).floor() as i32),
-                        Token::Power => Value::Float(l.powf(r)),
-                        Token::LessEqual => Value::Boolean(l <= r),
-                        _ => panic!("Unsupported operator for mixed float and number"),
-                    }
-                }
-                (Value::String(s), Value::String(t)) => {
-                    match op {
-                        Token::Plus => Value::String(s + &t),
-                        Token::Equal => Value::Boolean(s == t),
-                        Token::NotEqual => Value::Boolean(s != t),
-                        _ => panic!("Unsupported operator for strings"),
-                    }
-                }
-                (Value::Boolean(b1), Value::Boolean(b2)) => {
-                    match op {
-                        Token::Equal => Value::Boolean(b1 == b2),
-                        Token::NotEqual => Value::Boolean(b1 != b2),
-                        _ => panic!("Unsupported operator for booleans"),
-                    }
-                }
-                (Value::Type(t1), Value::Type(t2)) => {
-                    match op {
-                        Token::Equal => Value::Boolean(t1 == t2),
-                        Token::NotEqual => Value::Boolean(t1 != t2),
-                        _ => panic!("Unsupported operator for types"),
-                    }
-                }
-                _ => panic!("Unsupported operation for given types"),
             }
         },
-        
         ASTNode::Print(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             if is_verbose {
