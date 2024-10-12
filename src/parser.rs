@@ -28,6 +28,7 @@ pub enum ASTNode {
     UnaryOp(Token, Box<ASTNode>),
     Identifier(String),
     Index(Box<ASTNode>, Box<ASTNode>),
+    IndexAssign(Box<ASTNode>, Box<ASTNode>, Box<ASTNode>),
     Type(Box<ASTNode>),
     TypeLiteral(String),
     TypeCast(String, Box<ASTNode>),
@@ -38,6 +39,8 @@ pub enum ASTNode {
     Break,
     Continue,
 }
+
+
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -459,24 +462,36 @@ impl<'a> Parser<'a> {
         ASTNode::Var(name, initializer, is_mutable)
     }
 
+
     fn parse_assign_stmt(&mut self) -> ASTNode {
-        let name = if let Token::Identifier(ident) = self.current_token.clone() {
-            self.eat(Token::Identifier(ident.clone()));
-            ident
-        } else {
-            panic!("Expected identifier in assignment, got: {:?}", self.current_token);
-        };
-
-        self.eat(Token::Assign);
-        let expr = self.parse_expr();
-        
-
-        if self.current_token == Token::Semicolon {
-            self.eat(Token::Semicolon);
-        }
-        
-        ASTNode::Assign(name, Box::new(expr))
+            let name = if let Token::Identifier(ident) = self.current_token.clone() {
+                self.eat(Token::Identifier(ident.clone()));
+                ident
+            } else {
+                panic!("Expected identifier in assignment, got: {:?}", self.current_token);
+            };
+    
+            let mut expr = ASTNode::Identifier(name.clone());
+            if self.current_token == Token::LBracket {
+                self.eat(Token::LBracket);
+                let index = self.parse_expr();
+                self.eat(Token::RBracket);
+                expr = ASTNode::Index(Box::new(expr), Box::new(index));
+            }
+    
+            self.eat(Token::Assign);
+            let value = self.parse_expr();
+    
+            if self.current_token == Token::Semicolon {
+                self.eat(Token::Semicolon);
+            }
+    
+            match expr {
+                ASTNode::Index(array, index) => ASTNode::IndexAssign(array, index, Box::new(value)),
+                _ => ASTNode::Assign(name, Box::new(value)),
+            }
     }
+    
 
     fn parse_print(&mut self) -> ASTNode {
         self.eat(Token::Print);

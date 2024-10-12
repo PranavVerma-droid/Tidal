@@ -255,17 +255,45 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
         },
         ASTNode::Assign(name, expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
-            if let Some((_, is_mutable)) = symbol_table.get(name) {
-                if !is_mutable {
+            if let Some((current_value, is_mutable)) = symbol_table.get_mut(name) {
+                if !*is_mutable {
                     panic!("Cannot assign to immutable variable: {}", name);
                 }
-                symbol_table.insert(name.clone(), (value.clone(), *is_mutable));
+                *current_value = value.clone();
                 if is_verbose {
                     println!("assign {} = {:?}", name, value);
                 }
             } else {
                 panic!("Variable not declared: {}", name);
             }
+            Value::Null
+        },
+        ASTNode::IndexAssign(array, index, value) => {
+            let array_name = if let ASTNode::Identifier(name) = &**array {
+                name
+            } else {
+                panic!("Expected array identifier in index assignment");
+            };
+
+            let index_value = interpret_node(index, symbol_table, is_verbose, in_loop);
+            let value = interpret_node(value, symbol_table, is_verbose, in_loop);
+
+            if let Value::Number(index) = index_value {
+                if let Some((Value::Array(ref mut arr), is_mutable)) = symbol_table.get_mut(array_name) {
+                    if !*is_mutable {
+                        panic!("Cannot assign to immutable array '{}'", array_name);
+                    }
+                    if index as usize >= arr.len() {
+                        panic!("Index out of bounds for array '{}'", array_name);
+                    }
+                    arr[index as usize] = value;
+                } else {
+                    panic!("Array '{}' not found or is not mutable", array_name);
+                }
+            } else {
+                panic!("Expected integer index in array assignment");
+            }
+
             Value::Null
         },
         ASTNode::Identifier(name) => {
