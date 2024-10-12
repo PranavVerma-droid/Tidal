@@ -155,9 +155,28 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                         (Value::String(s), Value::String(t)) => {
                             match op {
                                 Token::Plus => Value::String(s + &t),
+                                Token::Multiply => {
+                                    if let Value::Number(n) = interpret_node(right, symbol_table, is_verbose, in_loop) {
+                                        Value::String(s.repeat(n as usize))
+                                    } else {
+                                        panic!("String can only be multiplied by an integer")
+                                    }
+                                }
                                 Token::Equal => Value::Boolean(s == t),
                                 Token::NotEqual => Value::Boolean(s != t),
                                 _ => panic!("Unsupported operator for strings"),
+                            }
+                        }
+                        (Value::String(s), Value::Number(n)) => {
+                            match op {
+                                Token::Multiply => Value::String(s.repeat(n as usize)),
+                                _ => panic!("Unsupported operation between string and number"),
+                            }
+                        }
+                        (Value::Number(n), Value::String(s)) => {
+                            match op {
+                                Token::Multiply => Value::String(s.repeat(n as usize)),
+                                _ => panic!("Unsupported operation between number and string"),
                             }
                         }
                         (Value::Boolean(b1), Value::Boolean(b2)) => {

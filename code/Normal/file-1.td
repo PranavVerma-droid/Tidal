@@ -4,4 +4,3 @@ var b;
 
 print(a);
 print(b);
-print(c);

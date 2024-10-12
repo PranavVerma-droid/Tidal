@@ -12,8 +12,8 @@ if (3 != 2) {
      print("Yay");
 } 
 
-var a = 7 // 2;  
-var b = 7 / 2;   
+a = 7 // 2;  
+b = 7 / 2;   
 
 print(a);
 print(b);

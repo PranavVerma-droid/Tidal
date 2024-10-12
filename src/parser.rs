@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) -> ASTNode {
-        match &self.current_token {
+        let mut node = match &self.current_token {
             Token::Number(val) => {
                 let num = *val;
                 self.eat(Token::Number(num));
@@ -360,11 +360,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(var_name) => {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()));
-                let mut node = ASTNode::Identifier(name);
-                while self.current_token == Token::LBracket {
-                    node = self.parse_index(node);
-                }
-                node
+                ASTNode::Identifier(name)
             }
             Token::TypeLiteral(type_name) => {
                 let name = type_name.clone();
@@ -392,7 +388,12 @@ impl<'a> Parser<'a> {
                 ASTNode::Type(Box::new(expr))
             }
             _ => panic!("Unexpected token in primary: {:?}", self.current_token),
+        };
+        while self.current_token == Token::LBracket {
+            node = self.parse_index(node);
         }
+    
+        node
     }
 
     fn parse_array_literal(&mut self) -> ASTNode {
