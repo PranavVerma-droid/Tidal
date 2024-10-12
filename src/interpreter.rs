@@ -1,6 +1,32 @@
 use crate::parser::{ASTNode, Value};
 use crate::lexer::Token;
 use std::collections::HashMap;
+use std::fmt;
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::Number(n) => write!(f, "{}", n),
+            Value::String(s) => write!(f, "{}", s),
+            Value::Boolean(b) => write!(f, "{}", b),
+            Value::Float(fl) => write!(f, "{}", fl),
+            Value::Null => write!(f, "null"),
+            Value::Type(t) => write!(f, "{}", t),
+            Value::Break => write!(f, "break"),
+            Value::Continue => write!(f, "continue"),
+            Value::Array(arr) => {
+                write!(f, "[")?;
+                for (i, value) in arr.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", value)?;
+                }
+                write!(f, "]")
+            },
+        }
+    }
+}
 
 pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Option<Value> {
     let mut symbol_table: HashMap<String, (Value, bool)> = HashMap::new(); // (Value, is_mutable)
@@ -153,21 +179,40 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 }
             }
         },
+        ASTNode::Array(elements) => {
+            let values: Vec<Value> = elements
+                .iter()
+                .map(|elem| interpret_node(elem, symbol_table, is_verbose, in_loop))
+                .collect();
+            Value::Array(values)
+        },
+
+        ASTNode::Index(expr, index) => {
+            let array = interpret_node(expr, symbol_table, is_verbose, in_loop);
+            let index = interpret_node(index, symbol_table, is_verbose, in_loop);
+            
+            match (array, index) {
+                (Value::Array(arr), Value::Number(i)) => {
+                    if i < 0 || i >= arr.len() as i32 {
+                        panic!("Index out of bounds");
+                    }
+                    arr[i as usize].clone()
+                },
+                (Value::String(s), Value::Number(i)) => {
+                    if i < 0 || i >= s.len() as i32 {
+                        panic!("Index out of bounds");
+                    }
+                    Value::String(s.chars().nth(i as usize).unwrap().to_string())
+                },
+                _ => panic!("Invalid indexing operation"),
+            }
+        },
         ASTNode::Print(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             if is_verbose {
-                println!("call print({:?})", value);
+                println!("call print({})", value);
             } else {
-                match value {
-                    Value::Number(n) => println!("{}", n),
-                    Value::String(s) => println!("{}", s),
-                    Value::Boolean(b) => println!("{}", b),
-                    Value::Float(f) => println!("{}", f),
-                    Value::Null => println!("null"),
-                    Value::Type(t) => println!("{}", t),
-                    Value::Break => println!("break"),
-                    Value::Continue => println!("continue"),
-                }
+                println!("{}", value);
             }
             Value::Null
         },
@@ -233,19 +278,6 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
         ASTNode::TypeLiteral(type_name) => {
             Value::Type(type_name.clone())
         },
-        ASTNode::Index(expr, index) => {
-            let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
-            let index = interpret_node(index, symbol_table, is_verbose, in_loop);
-            match (value, index) {
-                (Value::String(s), Value::Number(i)) => {
-                    if i < 0 || i >= s.len() as i32 {
-                        panic!("Index out of bounds");
-                    }
-                    Value::String(s.chars().nth(i as usize).unwrap().to_string())
-                }
-                _ => panic!("Invalid indexing operation"),
-            }
-        },
         ASTNode::Type(expr) => {
             let value = interpret_node(expr, symbol_table, is_verbose, in_loop);
             let type_str = match value {
@@ -257,6 +289,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                 Value::Type(_) => "type",
                 Value::Break => "break",
                 Value::Continue => "continue",
+                Value::Array(_) => "array",
             };
             if is_verbose {
                 println!("call type({:?}) = {}", value, type_str);

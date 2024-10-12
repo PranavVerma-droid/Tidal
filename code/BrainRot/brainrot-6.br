@@ -1,0 +1,20 @@
+rizzler a = [12, 23, "hi", "hello", "hi", "hi"] no cap
+sigma b = [12, 34123, ["hi", [[["hi"]], "lol", [[[[[[[0, 1, 2 ,3]]]]]], 4, 5, 6]]]] no cap
+rizzler c = [] no cap
+
+skibidi(a) no cap
+skibidi(b) no cap
+skibidi(c) no cap
+
+skibidi("") no cap
+
+skibidi(a[1]) no cap
+skibidi(a[2][1]) no cap
+skibidi(b[2][0][1]) no cap
+
+
+skibidi("") no cap
+
+skibidi(fanum tax(a)) no cap
+skibidi(fanum tax(a)) no cap
+skibidi(fanum tax(b)) no cap

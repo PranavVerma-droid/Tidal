@@ -11,6 +11,7 @@ pub enum Value {
     Type(String),
     Break,
     Continue,
+    Array(Vec<Value>),
 }
 
 #[derive(Debug)]
@@ -33,6 +34,7 @@ pub enum ASTNode {
     If(Box<ASTNode>, Vec<ASTNode>, Vec<(ASTNode, Vec<ASTNode>)>, Option<Vec<ASTNode>>),
     For(Box<ASTNode>, Box<ASTNode>, Box<ASTNode>, Vec<ASTNode>),
     While(Box<ASTNode>, Vec<ASTNode>),
+    Array(Vec<ASTNode>),
     Break,
     Continue,
 }
@@ -322,6 +324,7 @@ impl<'a> Parser<'a> {
                 self.eat(Token::RParen);
                 expr
             }
+            Token::LBracket => self.parse_array_literal(),
             Token::Identifier(_) | Token::String(_) | Token::Boolean(_) | Token::Null | Token::TypeLiteral(_) | Token::TypeCast(_) | Token::Type => {
                 self.parse_primary()
             }
@@ -354,11 +357,11 @@ impl<'a> Parser<'a> {
             Token::Identifier(var_name) => {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()));
-                if self.current_token == Token::LBracket {
-                    self.parse_index(ASTNode::Identifier(name))
-                } else {
-                    ASTNode::Identifier(name)
+                let mut node = ASTNode::Identifier(name);
+                while self.current_token == Token::LBracket {
+                    node = self.parse_index(node);
                 }
+                node
             }
             Token::TypeLiteral(type_name) => {
                 let name = type_name.clone();
@@ -387,6 +390,25 @@ impl<'a> Parser<'a> {
             }
             _ => panic!("Unexpected token in primary: {:?}", self.current_token),
         }
+    }
+
+    fn parse_array_literal(&mut self) -> ASTNode {
+        self.eat(Token::LBracket);
+        let mut elements = Vec::new();
+        
+        if self.current_token != Token::RBracket {
+            loop {
+                elements.push(self.parse_expr());
+                if self.current_token == Token::Comma {
+                    self.eat(Token::Comma);
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        self.eat(Token::RBracket);
+        ASTNode::Array(elements)
     }
 
     fn parse_index(&mut self, expr: ASTNode) -> ASTNode {
