@@ -85,6 +85,8 @@ fn preprocess_skibidi(input: &str) -> String {
         ("drip", "if"),
         ("mid", "elif"),
         ("nah", "else"),
+        ("gyatt", "true"),
+        ("diddy", "false"),
     ].iter().cloned().collect();
 
     let mut result = String::new();
