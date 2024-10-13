@@ -2,10 +2,13 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use std::process;
+use std::io::{self, Write};
 
 mod interpreter;
 mod lexer;
 mod parser;
+mod error;
 
 fn main() {
     // collect args
@@ -17,7 +20,7 @@ fn main() {
     // error display lul
     if args.len() < 2 || args.contains(&String::from("help")) || args.contains(&String::from("--help")) || args.contains(&String::from("-h")) {
         help();
-        std::process::exit(1);
+        process::exit(1);
     }
 
     let filename = &args[1];
@@ -25,13 +28,13 @@ fn main() {
 
     if !filename.ends_with(".td") && !is_brain_rot {
         eprintln!("Error: Input file must have a .td or .br extension");
-        std::process::exit(1);
+        process::exit(1);
     }
 
     // file check disk
     if !Path::new(filename).exists() {
         eprintln!("Error: File '{}' not found", filename);
-        std::process::exit(1);
+        process::exit(1);
     }
 
     // read file
@@ -49,10 +52,22 @@ fn main() {
     let mut parser = parser::Parser::new(&processed_contents);
 
     // Parser to AST
-    let ast = parser.parse();
+    let ast = match parser.parse() {
+        Ok(ast) => ast,
+        Err(e) => {
+            print_error(&e);
+            process::exit(1);
+        }
+    };
 
     // Interpreter
-    interpreter::interpret(ast, is_verbose);
+    match interpreter::interpret(ast, is_verbose) {
+        Ok(_) => {},
+        Err(e) => {
+            print_error(&e);
+            process::exit(1);
+        }
+    }
 }
 
 fn help() {
@@ -136,4 +151,11 @@ fn preprocess_skibidi(input: &str) -> String {
     }
 
     result
+}
+
+fn print_error(error: &error::Error) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+
+    writeln!(handle, "\x1b[31m{}\x1b[0m", error).unwrap();
 }

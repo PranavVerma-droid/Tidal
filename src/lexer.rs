@@ -1,5 +1,6 @@
 use std::str::Chars;
 use std::iter::Peekable;
+use crate::error::Error;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -52,103 +53,107 @@ pub enum Token {
 
 pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
+    pub line: usize,
+    column: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
             input: input.chars().peekable(),
+            line: 1,
+            column: 1,
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Result<Token, Error> {
         self.skip_whitespace();
 
         if let Some(token) = self.handle_comment() {
-            return token;
+            return Ok(token);
         }
 
         match self.input.next() {
-            Some(',') => Token::Comma,
+            Some(',') => Ok(Token::Comma),
             Some('/') => {
                 if self.input.peek() == Some(&'/') {
-                    self.input.next(); 
-                    Token::FloorDivide
+                    self.input.next();
+                    Ok(Token::FloorDivide)
                 } else {
-                    Token::Divide
+                    Ok(Token::Divide)
                 }
             },
             Some('*') => {
                 if self.input.peek() == Some(&'*') {
-                    self.input.next(); 
-                    Token::Power
+                    self.input.next();
+                    Ok(Token::Power)
                 } else {
-                    Token::Multiply
+                    Ok(Token::Multiply)
                 }
             },
             Some('&') => {
                 if self.input.next_if_eq(&'&').is_some() {
-                    Token::And
+                    Ok(Token::And)
                 } else {
-                    panic!("Unexpected character: &")
+                    Err(Error::SyntaxError(format!("Unexpected character: & at line {}, column {}", self.line, self.column)))
                 }
             },
             Some('|') => {
                 if self.input.next_if_eq(&'|').is_some() {
-                    Token::Or
+                    Ok(Token::Or)
                 } else {
-                    panic!("Unexpected character: |")
+                    Err(Error::SyntaxError(format!("Unexpected character: | at line {}, column {}", self.line, self.column)))
                 }
             },
             Some('!') => {
                 if self.input.next_if_eq(&'=').is_some() {
-                    Token::NotEqual
+                    Ok(Token::NotEqual)
                 } else {
-                    Token::Not
+                    Ok(Token::Not)
                 }
             },
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
-                '+' => Token::Plus,
-                '-' => Token::Minus,
+                '+' => Ok(Token::Plus),
+                '-' => Ok(Token::Minus),
                 '=' => {
                     if self.input.next_if_eq(&'=').is_some() {
-                        Token::Equal
+                        Ok(Token::Equal)
                     } else {
-                        Token::Assign
+                        Ok(Token::Assign)
                     }
                 },
                 '>' => {
                     if self.input.next_if_eq(&'=').is_some() {
-                        Token::GreaterEqual
+                        Ok(Token::GreaterEqual)
                     } else {
-                        Token::Greater
+                        Ok(Token::Greater)
                     }
                 },
                 '<' => {
                     if self.input.next_if_eq(&'=').is_some() {
-                        Token::LessEqual
+                        Ok(Token::LessEqual)
                     } else {
-                        Token::Less
+                        Ok(Token::Less)
                     }
                 },
-                ';' => Token::Semicolon,
-                '(' => Token::LParen,
-                ')' => Token::RParen,
-                '{' => Token::LBrace,
-                '}' => Token::RBrace,
-                '[' => Token::LBracket,
-                ']' => Token::RBracket,
-                '%' => Token::Modulus,
+                ';' => Ok(Token::Semicolon),
+                '(' => Ok(Token::LParen),
+                ')' => Ok(Token::RParen),
+                '{' => Ok(Token::LBrace),
+                '}' => Ok(Token::RBrace),
+                '[' => Ok(Token::LBracket),
+                ']' => Ok(Token::RBracket),
+                '%' => Ok(Token::Modulus),
                 '"' => self.read_string(),
                 'a'..='z' | 'A'..='Z' | '_' => self.read_identifier_or_keyword(ch),
-                _ => panic!("Unexpected character: {}", ch),
+                _ => Err(Error::SyntaxError(format!("Unexpected character: {} at line {}, column {}", ch, self.line, self.column))),
             },
-            None => Token::EOF,
+            None => Ok(Token::EOF),
         }
     }
 
-    fn read_number(&mut self, first_digit: char) -> Token {
+    fn read_number(&mut self, first_digit: char) -> Result<Token, Error> {
         let mut number = first_digit.to_string();
         let mut is_float = false;
         while let Some(&ch) = self.input.peek() {
@@ -164,13 +169,13 @@ impl<'a> Lexer<'a> {
             }
         }
         if is_float {
-            Token::Float(number.parse().unwrap())
+            Ok(Token::Float(number.parse().unwrap()))
         } else {
-            Token::Number(number.parse().unwrap())
+            Ok(Token::Number(number.parse().unwrap()))
         }
     }
 
-    fn read_identifier_or_keyword(&mut self, first_char: char) -> Token {
+    fn read_identifier_or_keyword(&mut self, first_char: char) -> Result<Token, Error> {
         let mut identifier = first_char.to_string();
         while let Some(&ch) = self.input.peek() {
             if ch.is_alphanumeric() || ch == '_' {
@@ -181,28 +186,28 @@ impl<'a> Lexer<'a> {
             }
         }
         match identifier.as_str() {
-            "var" => Token::Var,
-            "novar" => Token::NoVar,
-            "print" => Token::Print,
-            "type" => Token::Type,
-            "if" => Token::If,
-            "elif" => Token::Elif,
-            "else" => Token::Else,
-            "null" => Token::Null,
-            "true" => Token::Boolean(true),
-            "false" => Token::Boolean(false),
-            "for" => Token::For,
-            "while" => Token::While,
-            "break" => Token::Break,
-            "continue" => Token::Continue,
+            "var" => Ok(Token::Var),
+            "novar" => Ok(Token::NoVar),
+            "print" => Ok(Token::Print),
+            "type" => Ok(Token::Type),
+            "if" => Ok(Token::If),
+            "elif" => Ok(Token::Elif),
+            "else" => Ok(Token::Else),
+            "null" => Ok(Token::Null),
+            "true" => Ok(Token::Boolean(true)),
+            "false" => Ok(Token::Boolean(false)),
+            "for" => Ok(Token::For),
+            "while" => Ok(Token::While),
+            "break" => Ok(Token::Break),
+            "continue" => Ok(Token::Continue),
             "int" | "str" | "float" | "bool" => {
                 if self.input.peek() == Some(&'(') {
-                    Token::TypeCast(identifier)
+                    Ok(Token::TypeCast(identifier))
                 } else {
-                    Token::TypeLiteral(identifier)
+                    Ok(Token::TypeLiteral(identifier))
                 }
             },
-            _ => Token::Identifier(identifier),
+            _ => Ok(Token::Identifier(identifier)),
         }
     }
 
@@ -210,7 +215,7 @@ impl<'a> Lexer<'a> {
         if self.input.next_if(|&ch| ch == '/').is_some() {
             if self.input.next_if(|&ch| ch == '*').is_some() {
                 self.skip_multiline_comment();
-                return Some(self.next_token());
+                return Some(self.next_token().unwrap());
             } else {
                 return Some(Token::Divide);
             }
@@ -236,23 +241,28 @@ impl<'a> Lexer<'a> {
         }
     }
 
-
-    fn read_string(&mut self) -> Token {
+    fn read_string(&mut self) -> Result<Token, Error> {
         let mut string = String::new();
         while let Some(&ch) = self.input.peek() {
             if ch == '"' {
-                self.input.next(); 
+                self.input.next();
                 break;
             }
             string.push(ch);
             self.input.next();
         }
-        Token::String(string)
+        Ok(Token::String(string))
     }
 
     fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
             if ch.is_whitespace() {
+                if ch == '\n' {
+                    self.line += 1;
+                    self.column = 1;
+                } else {
+                    self.column += 1;
+                }
                 self.input.next();
             } else {
                 break;
