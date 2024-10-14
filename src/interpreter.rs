@@ -165,9 +165,14 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                                 }
                                 Token::Equal => Ok(Value::Boolean(s == t)),
                                 Token::NotEqual => Ok(Value::Boolean(s != t)),
+                                Token::Greater => Ok(Value::Boolean(s > t)),
+                                Token::Less => Ok(Value::Boolean(s < t)),
+                                Token::GreaterEqual => Ok(Value::Boolean(s >= t)),
+                                Token::LessEqual => Ok(Value::Boolean(s <= t)),
                                 _ => Err(Error::UnsupportedOperation(format!("Unsupported operator for strings"))),
                             }
                         }
+                        
                         (Value::String(s), Value::Number(n)) => {
                             match op {
                                 Token::Multiply => Ok(Value::String(s.repeat(n as usize))),
