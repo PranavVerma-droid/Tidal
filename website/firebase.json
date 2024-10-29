@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "tidal-lang",
+    "public": "main",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
