@@ -5,108 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tidal Programming Language</title>
-    <!-- Production version of Vue.js -->
+
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
-    <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Showdown.js for Markdown parsing -->
+    <link rel="stylesheet" href="index.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.0.3/showdown.min.js"></script>
-    <!-- Custom Styles -->
-    <style>
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            padding: 1rem;
-            background-color: #1a202c;
-            border-radius: 0.5rem;
-        }
-    
-        .code-block {
-            font-family: 'Courier New', Courier, monospace;
-            line-height: 1.5;
-        }
-    
-        .smooth-scroll {
-            scroll-behavior: smooth;
-        }
-    
-        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            font-weight: bold;
-        }
-    
-        .markdown-body h1 {
-            font-size: 2em;
-        }
-    
-        .markdown-body h2 {
-            font-size: 1.75em;
-        }
-    
-        .markdown-body h3 {
-            font-size: 1.5em;
-        }
-    
-        .markdown-body h4 {
-            font-size: 1.25em;
-        }
-    
-        .markdown-body h5 {
-            font-size: 1em;
-        }
-    
-        .markdown-body h6 {
-            font-size: 0.875em;
-        }
-    
-        .markdown-body ul, .markdown-body ol {
-            margin-top: 1em;
-            margin-bottom: 1em;
-            padding-left: 1.5em;
-        }
-    
-        .markdown-body ul {
-            list-style-type: disc;
-        }
-    
-        .markdown-body ol {
-            list-style-type: decimal;
-        }
-    
-        .markdown-body li {
-            margin-bottom: 0.5em;
-        }
-    
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-    
-        table th, table td {
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-        }
-    
-        table th {
-            background-color: #f3f4f6;
-            text-align: left;
-        }
-    
-        table tbody tr:hover {
-            background-color: #ebf4ff;
-        }
-    </style>
-    
-    
+
 </head>
 
 <body class="bg-gray-50">
-    <!-- Rest of the content remains the same as before, starting with <div id="app"> -->
     <div id="app">
-        <!-- Navigation -->
         <nav class="bg-blue-600 text-white shadow-lg">
             <div class="container mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
@@ -123,13 +33,12 @@
             </div>
         </nav>
 
-        <!-- Hero Section -->
         <section id="home" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
             <div class="container mx-auto px-6 text-center">
                 <h1 class="text-5xl font-bold mb-6">Tidal Programming Language</h1>
                 <p class="text-xl mb-8">A modern programming language built with Rust</p>
                 <div class="space-x-4">
-                    <a href="https://github.com/PranavVerma-droid/Tidal/releases/latest"
+                    <a href="#latest-release-section"
                         class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors inline-block">
                         Download Latest Release
                     </a>
@@ -141,7 +50,6 @@
             </div>
         </section>
 
-        <!-- Features Section -->
         <section id="features" class="py-20">
             <div class="container mx-auto px-6">
                 <h2 class="text-3xl font-bold text-center mb-12">Features</h2>
@@ -159,34 +67,46 @@
                         </p>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                        <i class="fas fa-sitemap text-blue-600 text-3xl mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">Control Structures</h3>
-                        <p class="text-gray-600">Comprehensive control structures including if-else statements and
-                            loops.</p>
+                        <i class="fas fa-brain text-blue-600 text-3xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Brain Rot Mode ☠️</h3>
+                        <p class="text-gray-600">Features a Brain Rot Mode to make Programming easier for the Younger
+                            Generation.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Code Example Section -->
+
         <section class="bg-gray-900 text-white py-20">
             <div class="container mx-auto px-6">
                 <h2 class="text-3xl font-bold text-center mb-12">Code Example</h2>
                 <div class="code-block bg-gray-800 p-6 rounded-lg overflow-x-auto max-w-2xl mx-auto">
                     <pre class="text-blue-300">
+/* Normal Syntax */
 var x = 5;
 var y = 3.14;
-var z = x + y;
+novar z = x + y;
 print(z);
 
 for (var i = 0; i < 5; i = i + 1) {
     print(i);
+}
+
+/* Brain Rot Syntax */
+rizzler x = 5 no cap
+rizzler y = 3.14 no cap
+sigma z = x + y no cap
+skibidi(z) no cap
+
+bussin (rizzler i = 0 no cap i < 5 no cap i = i + 1 no cap) {
+    skibidi(i) no cap
 }</pre>
+
+
                 </div>
             </div>
         </section>
 
-        <!-- Quick Links Section -->
         <section id="documentation" class="py-20 bg-gray-50">
             <div class="container mx-auto px-6">
                 <h2 class="text-3xl font-bold text-center mb-12">Quick Links</h2>
@@ -215,70 +135,75 @@ for (var i = 0; i < 5; i = i + 1) {
             </div>
         </section>
 
-       <!-- Latest Release Section -->
-<section class="py-16 bg-white">
-    <div class="container mx-auto px-6">
-        <h2 class="text-3xl font-bold text-center mb-12">Latest Release</h2>
-
-        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-            <!-- Release Header -->
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-tag text-green-600"></i>
-                        <a :href="release.html_url" class="text-2xl font-semibold hover:text-blue-600">
-                            Release {{ release.tag_name }}
-                            <span class="release-badge ml-2">Latest</span>
-                        </a>
-                    </div>
-                    <a :href="release.html_url" class="text-sm text-gray-500 hover:text-blue-600">
-                        Released {{ formatDate(release.published_at) }}
+        <section class="py-16 bg-white" id="latest-release-section">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl font-bold text-center mb-12">Latest Release</h2>
+                <div class="text-center mt-8">
+                    <a href="past-releases.html"
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block">
+                        View All Past Releases
                     </a>
                 </div>
-            </div>
 
-            <!-- Release Content -->
-            <div class="p-6 space-y-6">
-                <!-- Changes Section -->
-                <div v-if="release.body" v-html="convertMarkdown(release.body)" class="markdown-body"></div>
+                <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-tag text-green-600"></i>
+                                <a :href="release.html_url" class="text-2xl font-semibold hover:text-blue-600">
+                                    Release {{ release.tag_name }}
+                                    <span class="release-badge ml-2">Latest</span>
+                                </a>
+                            </div>
+                            <a :href="release.html_url" class="text-sm text-gray-500 hover:text-blue-600">
+                                Released {{ formatDate(release.published_at) }}
+                            </a>
+                        </div>
+                    </div>
 
-                <!-- Assets Section -->
-                <div v-if="release.assets && release.assets.length">
-                    <h4 class="text-lg font-semibold mb-3">Assets</h4>
-                    <table class="min-w-full bg-white">
-                        <thead>
-                            <tr>
-                                <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                                <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Download</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="asset in release.assets" :key="asset.id" class="release-file">
-                                <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                                    <span class="font-medium">{{ asset.name }}</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                                    <span class="text-sm text-gray-500 ml-2">{{ formatSize(asset.size) }} KB</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                                    <a :href="asset.browser_download_url" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-download"></i>
-                                        <span class="sr-only">Download {{ asset.name }}</span>
-                                    </a>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="p-6 space-y-6">
+                        <div v-if="release.body" v-html="convertMarkdown(release.body)" class="markdown-body"></div>
+                        <div v-if="release.assets && release.assets.length">
+                            <h4 class="text-lg font-semibold mb-3">Assets</h4>
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th
+                                            class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                                            Name</th>
+                                        <th
+                                            class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                                            Size</th>
+                                        <th
+                                            class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                                            Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="asset in release.assets" :key="asset.id" class="release-file">
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <span class="font-medium">{{ asset.name }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <span class="text-sm text-gray-500 ml-2">{{ formatSize(asset.size) }}
+                                                KB</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <a :href="asset.browser_download_url"
+                                                class="text-blue-600 hover:text-blue-800">
+                                                <i class="fas fa-download"></i>
+                                                <span class="sr-only">Download {{ asset.name }}</span>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
+        </section>
 
-
-
-        <!-- Footer -->
         <footer class="bg-gray-900 text-white py-12">
             <div class="container mx-auto px-6">
                 <div class="grid md:grid-cols-3 gap-8">
@@ -345,7 +270,7 @@ for (var i = 0; i < 5; i = i + 1) {
             }
         }).mount('#app')
     </script>
-    
+
 </body>
 
 </html>

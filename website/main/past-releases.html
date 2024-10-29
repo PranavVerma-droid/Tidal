@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past Releases - Tidal Programming Language</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.0.3/showdown.min.js"></script>
+
+
+</head>
+
+<body class="bg-gray-50">
+    <div id="app">
+        <nav class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="text-xl font-bold">Tidal</span>
+                    </div>
+                    <div class="hidden md:flex space-x-8">
+                        <a href="index.html#home" class="hover:text-blue-200 transition-colors">Home</a>
+                        <a href="index.html#features" class="hover:text-blue-200 transition-colors">Features</a>
+                        <a href="index.html#documentation" class="hover:text-blue-200 transition-colors">Documentation</a>
+                        <a href="index.html#download" class="hover:text-blue-200 transition-colors">Download</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <section class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl font-bold text-center mb-12">Past Releases</h2>
+                <div class="text-center mt-8">
+                    <a href="index.html" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block">
+                        Go Back Home
+                    </a>
+                </div>
+
+                <div v-for="release in releases" :key="release.id" class="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden mb-8">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-tag text-gray-600"></i>
+                                <a :href="release.html_url" class="text-2xl font-semibold hover:text-blue-600">
+                                    Release {{ release.tag_name }}
+                                </a>
+                            </div>
+                            <a :href="release.html_url" class="text-sm text-gray-500 hover:text-blue-600">
+                                Released {{ formatDate(release.published_at) }}
+                            </a>
+                        </div>
+                    </div>
+
+               
+                    <div class="p-6 space-y-6">
+                        
+                        <div v-if="release.body" v-html="convertMarkdown(release.body)" class="markdown-body"></div>
+
+                        
+                        <div v-if="release.assets && release.assets.length">
+                            <h4 class="text-lg font-semibold mb-3">Assets</h4>
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                        <th class="px-6 py-3 border-b border-gray-200 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="asset in release.assets" :key="asset.id" class="release-file">
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <span class="font-medium">{{ asset.name }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <span class="text-sm text-gray-500 ml-2">{{ formatSize(asset.size) }} KB</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                                            <a :href="asset.browser_download_url" class="text-blue-600 hover:text-blue-800">
+                                                <i class="fas fa-download"></i>
+                                                <span class="sr-only">Download {{ asset.name }}</span>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+        <footer class="bg-gray-900 text-white py-12">
+            <div class="container mx-auto px-6">
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">Tidal</h4>
+                        <p>A modern programming language built with Rust by Pranav Verma</p>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">Links</h4>
+                        <ul class="space-y-2">
+                            <li><a href="https://github.com/PranavVerma-droid/Tidal"
+                                    class="hover:text-blue-400 transition-colors">GitHub</a></li>
+                            <li><a href="https://github.com/PranavVerma-droid/Tidal/wiki"
+                                    class="hover:text-blue-400 transition-colors">Documentation</a></li>
+                            <li><a href="https://github.com/PranavVerma-droid/Tidal/releases"
+                                    class="hover:text-blue-400 transition-colors">Downloads</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">File Extensions</h4>
+                        <ul class="space-y-2">
+                            <li>.td - Tidal source files</li>
+                            <li>.br - Alternative extension</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                    <p>&copy; 2024 Tidal Programming Language. Created by Pranav Verma.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    releases: [],
+                    converter: new showdown.Converter()
+                }
+            },
+            methods: {
+                fetchReleases() {
+                    fetch('https://api.github.com/repos/PranavVerma-droid/Tidal/releases')
+                        .then(response => response.json())
+                        .then(data => {
+                            this.releases = data;
+                        })
+                        .catch(error => console.error('Error fetching releases:', error));
+                },
+                formatDate(dateString) {
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString(undefined, options);
+                },
+                formatSize(size) {
+                    return (size / 1024).toFixed(2);
+                },
+                convertMarkdown(markdown) {
+                    return this.converter.makeHtml(markdown);
+                }
+            },
+            mounted() {
+                this.fetchReleases();
+            }
+        }).mount('#app')
+    </script>
+
+</body>
+
+</html>
