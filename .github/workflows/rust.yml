@@ -1,4 +1,4 @@
-name: Rust Chceks
+name: Rust Build Checks
 
 on:
   push:
