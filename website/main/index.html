@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tidal Programming Language</title>
-
+    <title>Tidal Lang</title>
+    <link rel="icon" type="image/x-icon" href="icon.png">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,7 +27,7 @@
                         <a href="#home" class="hover:text-blue-200 transition-colors">Home</a>
                         <a href="#features" class="hover:text-blue-200 transition-colors">Features</a>
                         <a href="#documentation" class="hover:text-blue-200 transition-colors">Documentation</a>
-                        <a href="#download" class="hover:text-blue-200 transition-colors">Download</a>
+                        <a href="#download-tidal" class="hover:text-blue-200 transition-colors">Download</a>
                     </div>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                 <h1 class="text-5xl font-bold mb-6">Tidal Programming Language</h1>
                 <p class="text-xl mb-8">A modern programming language built with Rust</p>
                 <div class="space-x-4">
-                    <a href="#latest-release-section"
+                    <a href="#download-tidal"
                         class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors inline-block">
                         Download Latest Release
                     </a>
@@ -116,7 +116,7 @@ bussin (rizzler i = 0 no cap i < 5 no cap i = i + 1 no cap) {
                         <h3 class="text-xl font-semibold mb-2 text-blue-600">Documentation</h3>
                         <p class="text-gray-600">Learn how to use Tidal</p>
                     </a>
-                    <a href="https://github.com/PranavVerma-droid/Tidal/releases"
+                    <a href="#download-tidal"
                         class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                         <h3 class="text-xl font-semibold mb-2 text-blue-600">Downloads</h3>
                         <p class="text-gray-600">Get the latest release</p>
@@ -135,9 +135,9 @@ bussin (rizzler i = 0 no cap i < 5 no cap i = i + 1 no cap) {
             </div>
         </section>
 
-        <section class="py-16 bg-white" id="latest-release-section">
+        <section class="py-16 bg-white" id="download-tidal">
             <div class="container mx-auto px-6">
-                <h2 class="text-3xl font-bold text-center mb-12">Latest Release</h2>
+                <h2 class="text-3xl font-bold text-center mb-12">Download Latest Release</h2>
                 <div class="text-center mt-8">
                     <a href="past-releases.html"
                         class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block">
@@ -152,16 +152,17 @@ bussin (rizzler i = 0 no cap i < 5 no cap i = i + 1 no cap) {
                                 <i class="fas fa-tag text-green-600"></i>
                                 <a :href="release.html_url" class="text-2xl font-semibold hover:text-blue-600">
                                     Release {{ release.tag_name }}
-                                    <span class="release-badge ml-2">Latest</span>
                                 </a>
                             </div>
-                            <a :href="release.html_url" class="text-sm text-gray-500 hover:text-blue-600">
-                                Released {{ formatDate(release.published_at) }}
-                            </a>
+                            <div>
+                                <a :href="release.html_url" class="text-sm text-gray-500 hover:text-blue-600">
+                                    Released {{ formatDate(release.published_at) }}
+                                </a>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="p-6 space-y-6">
+                    <div class="p-6 space-y-6" style="margin-top: -40px;">
                         <div v-if="release.body" v-html="convertMarkdown(release.body)" class="markdown-body"></div>
                         <div v-if="release.assets && release.assets.length">
                             <h4 class="text-lg font-semibold mb-3">Assets</h4>
