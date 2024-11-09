@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Error {
     SyntaxError(String),
@@ -10,7 +11,12 @@ pub enum Error {
     UnsupportedOperation(String),
     BreakOutsideLoop,
     ContinueOutsideLoop,
-    //UnknownError(String),
+    FileNotFound(String),
+    InvalidFileExtension(String),
+    LexerError(String),
+    ParserError(String),
+    InterpreterError(String),
+    UnknownError(String),
 }
 
 impl fmt::Display for Error {
@@ -24,7 +30,12 @@ impl fmt::Display for Error {
             Error::UnsupportedOperation(msg) => write!(f, "UnsupportedOperation: {}", msg),
             Error::BreakOutsideLoop => write!(f, "Break statement outside of loop"),
             Error::ContinueOutsideLoop => write!(f, "Continue statement outside of loop"),
-            // Error::UnknownError(msg) => write!(f, "UnknownError: {}", msg),
+            Error::FileNotFound(msg) => write!(f, "FileNotFound: {}", msg),
+            Error::InvalidFileExtension(msg) => write!(f, "InvalidFileExtension: {}", msg),
+            Error::LexerError(msg) => write!(f, "LexerError: {}", msg),
+            Error::ParserError(msg) => write!(f, "ParserError: {}", msg),
+            Error::InterpreterError(msg) => write!(f, "InterpreterError: {}", msg),
+            Error::UnknownError(msg) => write!(f, "UnknownError: {}", msg),
         }
     }
 }

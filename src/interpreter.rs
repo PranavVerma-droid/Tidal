@@ -172,7 +172,7 @@ fn interpret_node(node: &ASTNode, symbol_table: &mut HashMap<String, (Value, boo
                                 _ => Err(Error::UnsupportedOperation(format!("Unsupported operator for strings"))),
                             }
                         }
-                        
+
                         (Value::String(s), Value::Number(n)) => {
                             match op {
                                 Token::Multiply => Ok(Value::String(s.repeat(n as usize))),

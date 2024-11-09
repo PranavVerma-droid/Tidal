@@ -7,7 +7,7 @@ pub enum Value {
     Number(i32),
     String(String),
     Boolean(bool),
-    Float(f64), 
+    Float(f64),
     Null,
     Type(String),
     Break,
@@ -20,7 +20,7 @@ pub enum ASTNode {
     Number(i32),
     String(String),
     Boolean(bool),
-    Float(f64), 
+    Float(f64),
     Null,
     BinaryOp(Box<ASTNode>, Token, Box<ASTNode>),
     Print(Box<ASTNode>),
@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
             self.current_token = self.lexer.next_token()?;
             Ok(())
         } else {
-            Err(Error::SyntaxError(format!("Unexpected token: {:?}, expected: {:?} at line {}", self.current_token, token, self.lexer.line)))
+            Err(Error::ParserError(format!("Unexpected token: {:?}, expected: {:?} at line {}", self.current_token, token, self.lexer.line)))
         }
     }
 
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
             Token::Continue => self.parse_continue(),
             Token::While => self.parse_while_loop(),
             Token::Type => self.parse_type(),
-            _ => Err(Error::SyntaxError(format!("Unexpected token in statement: {:?} at line {}", self.current_token, self.lexer.line))),
+            _ => Err(Error::ParserError(format!("Unexpected token in statement: {:?} at line {}", self.current_token, self.lexer.line))),
         }
     }
 
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(_) | Token::String(_) | Token::Boolean(_) | Token::Null | Token::TypeLiteral(_) | Token::TypeCast(_) | Token::Type => {
                 self.parse_primary()
             }
-            _ => Err(Error::SyntaxError(format!("Unexpected token in factor: {:?} at line {}", self.current_token, self.lexer.line))),
+            _ => Err(Error::ParserError(format!("Unexpected token in factor: {:?} at line {}", self.current_token, self.lexer.line))),
         }
     }
 
@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
                 self.eat(Token::RParen)?;
                 ASTNode::Type(Box::new(expr))
             }
-            _ => return Err(Error::SyntaxError(format!("Unexpected token in primary: {:?} at line {}", self.current_token, self.lexer.line))),
+            _ => return Err(Error::ParserError(format!("Unexpected token in primary: {:?} at line {}", self.current_token, self.lexer.line))),
         };
         while self.current_token == Token::LBracket {
             node = self.parse_index(node)?;
@@ -434,7 +434,7 @@ impl<'a> Parser<'a> {
         let is_mutable = match self.current_token {
             Token::Var => true,
             Token::NoVar => false,
-            _ => return Err(Error::SyntaxError(format!("Expected var or novar at line {}", self.lexer.line))),
+            _ => return Err(Error::ParserError(format!("Expected var or novar at line {}", self.lexer.line))),
         };
         self.eat(self.current_token.clone())?;
 
@@ -442,7 +442,7 @@ impl<'a> Parser<'a> {
             self.eat(Token::Identifier(ident.clone()))?;
             ident
         } else {
-            return Err(Error::SyntaxError(format!("Expected identifier in variable declaration at line {}", self.lexer.line)));
+            return Err(Error::ParserError(format!("Expected identifier in variable declaration at line {}", self.lexer.line)));
         };
 
         if self.symbol_table.contains_key(&name) {
@@ -467,7 +467,7 @@ impl<'a> Parser<'a> {
             self.eat(Token::Identifier(ident.clone()))?;
             ident
         } else {
-            return Err(Error::SyntaxError(format!("Expected identifier in assignment at line {}", self.lexer.line)));
+            return Err(Error::ParserError(format!("Expected identifier in assignment at line {}", self.lexer.line)));
         };
 
         let mut expr = ASTNode::Identifier(name.clone());
