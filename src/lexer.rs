@@ -37,7 +37,7 @@ pub enum Token {
     LBrace,
     RBrace,
     LBracket,
-    RBracket, 
+    RBracket,
     Null,
     For,
     While,
@@ -95,14 +95,14 @@ impl<'a> Lexer<'a> {
                 if self.input.next_if_eq(&'&').is_some() {
                     Ok(Token::And)
                 } else {
-                    Err(Error::SyntaxError(format!("Unexpected character: & at line {}, column {}", self.line, self.column)))
+                    Err(Error::LexerError(format!("Unexpected character: & at line {}, column {}", self.line, self.column)))
                 }
             },
             Some('|') => {
                 if self.input.next_if_eq(&'|').is_some() {
                     Ok(Token::Or)
                 } else {
-                    Err(Error::SyntaxError(format!("Unexpected character: | at line {}, column {}", self.line, self.column)))
+                    Err(Error::LexerError(format!("Unexpected character: | at line {}, column {}", self.line, self.column)))
                 }
             },
             Some('!') => {
@@ -147,7 +147,7 @@ impl<'a> Lexer<'a> {
                 '%' => Ok(Token::Modulus),
                 '"' => self.read_string(),
                 'a'..='z' | 'A'..='Z' | '_' => self.read_identifier_or_keyword(ch),
-                _ => Err(Error::SyntaxError(format!("Unexpected character: {} at line {}, column {}", ch, self.line, self.column))),
+                _ => Err(Error::LexerError(format!("Unexpected character: {} at line {}, column {}", ch, self.line, self.column))),
             },
             None => Ok(Token::EOF),
         }

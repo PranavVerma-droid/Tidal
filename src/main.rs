@@ -39,7 +39,8 @@ fn main() {
 
     // read file
     let contents = fs::read_to_string(filename)
-        .expect("Something went wrong reading the file");
+        .map_err(|e| error::Error::FileNotFound(format!("Failed to read file: {}", e)))
+        .unwrap();
 
     // Brain Rot Parser
     let processed_contents = if is_brain_rot {
