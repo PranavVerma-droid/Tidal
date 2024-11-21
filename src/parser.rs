@@ -43,7 +43,7 @@ pub enum ASTNode {
     Continue,
     FunctionDecl(String, Vec<String>, Vec<ASTNode>),  // name, params, body
     FunctionCall(String, Vec<ASTNode>),  // name, arguments
-    Return(Option<Box<ASTNode>>),  // Optional return value
+    Return(Option<Box<ASTNode>>),
 }
 
 pub struct Parser<'a> {
@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         while self.current_token != Token::RParen {
             if let Token::Identifier(param) = self.current_token.clone() {
-                params.push(param.clone());  // Clone here
+                params.push(param.clone());  // clone here
                 self.eat(Token::Identifier(param))?;
                 
                 if self.current_token == Token::Comma {
@@ -136,8 +136,6 @@ impl<'a> Parser<'a> {
         
         Ok(ASTNode::Return(expr))
     }
-
-        // In parser.rs, update parse_statement:
     fn parse_statement(&mut self) -> Result<ASTNode, Error> {
         match &self.current_token {
             Token::Var | Token::NoVar => self.parse_var_decl(),
@@ -156,7 +154,7 @@ impl<'a> Parser<'a> {
                 
                 match &self.current_token {
                     Token::LParen => {
-                        // Function call
+                        // function call
                         self.eat(Token::LParen)?;
                         let mut args = Vec::new();
                         
@@ -172,12 +170,11 @@ impl<'a> Parser<'a> {
                         }
                         
                         self.eat(Token::RParen)?;
-                        self.eat(Token::Semicolon)?;  // Only require semicolon for statement
+                        self.eat(Token::Semicolon)?; 
                         
                         Ok(ASTNode::FunctionCall(name, args))
                     },
                     Token::Assign | Token::LBracket => {
-                        // Variable assignment or array indexing
                         let node = ASTNode::Identifier(name);
                         self.parse_assign_stmt_with_node(node)
                     },
@@ -204,7 +201,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_assign_stmt_with_node(&mut self, left: ASTNode) -> Result<ASTNode, Error> {
-        match left {
+        if let ASTNode::Identifier(name) = &left { //check for array first
+            if self.current_token == Token::LBracket {
+                self.eat(Token::LBracket)?;
+                let index = self.parse_expr()?;
+                self.eat(Token::RBracket)?;
+                self.eat(Token::Assign)?;
+                let value = self.parse_expr()?;
+                self.eat(Token::Semicolon)?;
+                return Ok(ASTNode::IndexAssign(
+                    Box::new(ASTNode::Identifier(name.clone())),
+                    Box::new(index),
+                    Box::new(value)
+                ));
+            }
+        }
+        match left { //then function.
             ASTNode::Identifier(name) => {
                 self.eat(Token::Assign)?;
                 let value = self.parse_expr()?;
@@ -486,7 +498,7 @@ impl<'a> Parser<'a> {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()))?;
                 
-                // Check if this is a function call
+                // check for function call
                 if self.current_token == Token::LParen {
                     self.eat(Token::LParen)?;
                     let mut args = Vec::new();

@@ -28,6 +28,8 @@ impl fmt::Display for Value {
         }
     }
 }
+
+
 pub struct Environment {
     variables: HashMap<String, (Value, bool)>,
     functions: HashMap<String, Value>,
@@ -280,45 +282,43 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 _ => Err(Error::TypeError(format!("Invalid indexing operation"))),
             }
         },
-        // In interpreter.rs, update the FunctionCall match arm:
-ASTNode::FunctionCall(name, args) => {
-    if let Some(Value::Function(_, params, body)) = env.functions.get(name).cloned() {
-        // Create new scope for function
-        let mut func_env = Environment::new();
-        func_env.in_function = true;
-        
-        // Evaluate arguments one by one
-        let mut evaluated_args = Vec::new();
-        for arg in args {
-            evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
-        }
-        
-        // Check argument count
-        if params.len() != evaluated_args.len() {
-            return Err(Error::TypeError(format!(
-                "Function '{}' expects {} arguments but got {}", 
-                name, params.len(), evaluated_args.len()
-            )));
-        }
-        
-        // Bind parameters
-        for (param, arg) in params.iter().zip(evaluated_args) {
-            func_env.insert_var(param.clone(), arg, true);
-        }
-        
-        // Execute function body
-        let mut result = Value::Null;
-        for stmt in body {
-            match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
-                Value::ReturnValue(val) => return Ok(*val),
-                val => result = val,
+        ASTNode::FunctionCall(name, args) => {
+            if let Some(Value::Function(_, params, body)) = env.functions.get(name).cloned() {
+                // create new scope
+                let mut func_env = Environment::new();
+                func_env.in_function = true;
+                
+
+                let mut evaluated_args = Vec::new();
+                for arg in args {
+                    evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
+                }
+                
+                // Check argument count
+                if params.len() != evaluated_args.len() {
+                    return Err(Error::TypeError(format!(
+                        "Function '{}' expects {} arguments but got {}", 
+                        name, params.len(), evaluated_args.len()
+                    )));
+                }
+                
+                for (param, arg) in params.iter().zip(evaluated_args) {
+                    func_env.insert_var(param.clone(), arg, true);
+                }
+                
+                // exec
+                let mut result = Value::Null;
+                for stmt in body {
+                    match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
+                        Value::ReturnValue(val) => return Ok(*val),
+                        val => result = val,
+                    }
+                }
+                Ok(result)
+            } else {
+                Err(Error::VariableNotDeclared(format!("Function '{}' not defined", name)))
             }
-        }
-        Ok(result)
-    } else {
-        Err(Error::VariableNotDeclared(format!("Function '{}' not defined", name)))
-    }
-},
+        },
         ASTNode::Return(expr) => {
             if !env.in_function {
                 return Err(Error::SyntaxError("'return' outside function".to_string()));
