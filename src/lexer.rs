@@ -48,6 +48,8 @@ pub enum Token {
     And,
     Or,
     Not,
+    Func,
+    Return,
     EOF,
 }
 
@@ -207,6 +209,8 @@ impl<'a> Lexer<'a> {
                     Ok(Token::TypeLiteral(identifier))
                 }
             },
+            "func" => Ok(Token::Func),
+            "return" => Ok(Token::Return),
             _ => Ok(Token::Identifier(identifier)),
         }
     }

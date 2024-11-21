@@ -13,9 +13,11 @@ pub enum Value {
     Break,
     Continue,
     Array(Vec<Value>),
+    Function(String, Vec<String>, Vec<ASTNode>),  
+    ReturnValue(Box<Value>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ASTNode {
     Number(i32),
     String(String),
@@ -39,6 +41,9 @@ pub enum ASTNode {
     Array(Vec<ASTNode>),
     Break,
     Continue,
+    FunctionDecl(String, Vec<String>, Vec<ASTNode>),  // name, params, body
+    FunctionCall(String, Vec<ASTNode>),  // name, arguments
+    Return(Option<Box<ASTNode>>),  // Optional return value
 }
 
 pub struct Parser<'a> {
@@ -75,10 +80,67 @@ impl<'a> Parser<'a> {
         Ok(ast_nodes)
     }
 
+    fn parse_function_decl(&mut self) -> Result<ASTNode, Error> {
+        self.eat(Token::Func)?;
+        
+        let name = if let Token::Identifier(name) = self.current_token.clone() {
+            self.eat(Token::Identifier(name.clone()))?;
+            name
+        } else {
+            return Err(Error::ParserError("Expected function name".to_string()));
+        };
+    
+        if Self::is_keyword(&name) {
+            return Err(Error::SyntaxError(format!("Cannot use keyword '{}' as function name", name)));
+        }
+    
+        self.eat(Token::LParen)?;
+        
+        let mut params = Vec::new();
+        while self.current_token != Token::RParen {
+            if let Token::Identifier(param) = self.current_token.clone() {
+                params.push(param.clone());  // Clone here
+                self.eat(Token::Identifier(param))?;
+                
+                if self.current_token == Token::Comma {
+                    self.eat(Token::Comma)?;
+                }
+            } else {
+                return Err(Error::ParserError("Expected parameter name".to_string()));
+            }
+        }
+        
+        self.eat(Token::RParen)?;
+        self.eat(Token::LBrace)?;
+        
+        let mut body = Vec::new();
+        while self.current_token != Token::RBrace {
+            body.push(self.parse_statement()?);
+        }
+        
+        self.eat(Token::RBrace)?;
+        
+        Ok(ASTNode::FunctionDecl(name, params, body))
+    }
+
+    fn parse_return(&mut self) -> Result<ASTNode, Error> {
+        self.eat(Token::Return)?;
+        
+        let expr = if self.current_token != Token::Semicolon {
+            Some(Box::new(self.parse_expr()?))
+        } else {
+            None
+        };
+        
+        self.eat(Token::Semicolon)?;
+        
+        Ok(ASTNode::Return(expr))
+    }
+
+        // In parser.rs, update parse_statement:
     fn parse_statement(&mut self) -> Result<ASTNode, Error> {
         match &self.current_token {
             Token::Var | Token::NoVar => self.parse_var_decl(),
-            Token::Identifier(_) => self.parse_assign_stmt(),
             Token::Print => self.parse_print(),
             Token::If => self.parse_if_statement(),
             Token::For => self.parse_for_loop(),
@@ -86,7 +148,70 @@ impl<'a> Parser<'a> {
             Token::Continue => self.parse_continue(),
             Token::While => self.parse_while_loop(),
             Token::Type => self.parse_type(),
-            _ => Err(Error::ParserError(format!("Unexpected token in statement: {:?} at line {}", self.current_token, self.lexer.line))),
+            Token::Func => self.parse_function_decl(),
+            Token::Return => self.parse_return(),
+            Token::Identifier(name) => {
+                let name = name.clone();
+                self.eat(Token::Identifier(name.clone()))?;
+                
+                match &self.current_token {
+                    Token::LParen => {
+                        // Function call
+                        self.eat(Token::LParen)?;
+                        let mut args = Vec::new();
+                        
+                        if self.current_token != Token::RParen {
+                            loop {
+                                args.push(self.parse_expr()?);
+                                if self.current_token == Token::Comma {
+                                    self.eat(Token::Comma)?;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        self.eat(Token::RParen)?;
+                        self.eat(Token::Semicolon)?;  // Only require semicolon for statement
+                        
+                        Ok(ASTNode::FunctionCall(name, args))
+                    },
+                    Token::Assign | Token::LBracket => {
+                        // Variable assignment or array indexing
+                        let node = ASTNode::Identifier(name);
+                        self.parse_assign_stmt_with_node(node)
+                    },
+                    _ => Err(Error::ParserError(format!(
+                        "Unexpected token after identifier: {:?} at line {}", 
+                        self.current_token, 
+                        self.lexer.line
+                    ))),
+                }
+            },
+            _ => Err(Error::ParserError(format!(
+                "Unexpected token in statement: {:?} at line {}", 
+                self.current_token, 
+                self.lexer.line
+            ))),
+        }
+    }
+    fn is_keyword(name: &str) -> bool {
+        matches!(name, 
+            "var" | "novar" | "print" | "type" | "if" | "elif" | "else" | 
+            "null" | "true" | "false" | "for" | "while" | "break" | "continue" |
+            "int" | "str" | "float" | "bool" | "func" | "return"
+        )
+    }
+
+    fn parse_assign_stmt_with_node(&mut self, left: ASTNode) -> Result<ASTNode, Error> {
+        match left {
+            ASTNode::Identifier(name) => {
+                self.eat(Token::Assign)?;
+                let value = self.parse_expr()?;
+                self.eat(Token::Semicolon)?;
+                Ok(ASTNode::Assign(name, Box::new(value)))
+            },
+            _ => Err(Error::ParserError("Invalid assignment target".to_string()))
         }
     }
 
@@ -360,7 +485,28 @@ impl<'a> Parser<'a> {
             Token::Identifier(var_name) => {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()))?;
-                ASTNode::Identifier(name)
+                
+                // Check if this is a function call
+                if self.current_token == Token::LParen {
+                    self.eat(Token::LParen)?;
+                    let mut args = Vec::new();
+                    
+                    if self.current_token != Token::RParen {
+                        loop {
+                            args.push(self.parse_expr()?);
+                            if self.current_token == Token::Comma {
+                                self.eat(Token::Comma)?;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    self.eat(Token::RParen)?;
+                    ASTNode::FunctionCall(name, args)
+                } else {
+                    ASTNode::Identifier(name)
+                }
             }
             Token::TypeLiteral(type_name) => {
                 let name = type_name.clone();
