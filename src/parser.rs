@@ -43,6 +43,7 @@ pub enum ASTNode {
     Continue,
     FunctionDecl(String, Vec<String>, Vec<ASTNode>),  // name, params, body
     FunctionCall(String, Vec<ASTNode>),  // name, arguments
+    Input(Box<ASTNode>),
     Return(Option<Box<ASTNode>>),
 }
 
@@ -438,6 +439,13 @@ impl<'a> Parser<'a> {
 
     fn parse_factor(&mut self) -> Result<ASTNode, Error> {
         match &self.current_token {
+            Token::Input => {
+                self.eat(Token::Input)?;
+                self.eat(Token::LParen)?;
+                let prompt = self.parse_expr()?;
+                self.eat(Token::RParen)?;
+                Ok(ASTNode::Input(Box::new(prompt)))
+            },
             Token::Minus => {
                 self.eat(Token::Minus)?;
                 let factor = self.parse_factor()?;

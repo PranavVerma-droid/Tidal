@@ -50,6 +50,7 @@ pub enum Token {
     Not,
     Func,
     Return,
+    Input,
     EOF,
 }
 
@@ -211,6 +212,7 @@ impl<'a> Lexer<'a> {
             },
             "func" => Ok(Token::Func),
             "return" => Ok(Token::Return),
+            "input" => Ok(Token::Input),
             _ => Ok(Token::Identifier(identifier)),
         }
     }

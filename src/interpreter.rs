@@ -96,6 +96,18 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         ASTNode::Float(val) => Ok(Value::Float(*val)),
         ASTNode::Boolean(val) => Ok(Value::Boolean(*val)),
         ASTNode::Null => Ok(Value::Null),
+        ASTNode::Input(prompt) => {
+            use std::io::{self, Write};
+
+            let prompt_value = interpret_node(&prompt, env, is_verbose, in_loop)?;
+            print!("{}", prompt_value);
+            io::stdout().flush().unwrap();
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).unwrap();
+
+            Ok(Value::String(input.trim().to_string()))
+        },
         ASTNode::FunctionDecl(name, params, body) => {
             env.insert_function(
                 name.clone(),
