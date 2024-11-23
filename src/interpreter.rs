@@ -106,6 +106,9 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::DelCall(expr) => {
             if let ASTNode::Identifier(name) = &**expr {
+                if is_verbose {
+                    println!("delete variable '{}'", name);
+                }
                 env.variables.remove(name);
                 Ok(Value::Null)
             } else {
@@ -114,15 +117,23 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::Input(prompt) => {
             use std::io::{self, Write};
-
+        
             let prompt_value = interpret_node(&prompt, env, is_verbose, in_loop)?;
+            if is_verbose {
+                println!("requesting input with prompt: {}", prompt_value);
+            }
             print!("{}", prompt_value);
             io::stdout().flush().unwrap();
             
             let mut input = String::new();
             io::stdin().read_line(&mut input).unwrap();
-
-            Ok(Value::String(input.trim().to_string()))
+            let trimmed_input = input.trim().to_string();
+        
+            if is_verbose {
+                println!("received input: {}", trimmed_input);
+            }
+        
+            Ok(Value::String(trimmed_input))
         },
         ASTNode::FunctionDecl(name, params, body) => {
             env.insert_function(
@@ -289,7 +300,6 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 .collect::<Result<_, _>>()?;
             Ok(Value::Array(values))
         },
-
         ASTNode::Index(expr, index) => {
             let array = interpret_node(expr, env, is_verbose, in_loop)?;
             let index = interpret_node(index, env, is_verbose, in_loop)?;
@@ -377,17 +387,39 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::While(condition, body) => {
+            if is_verbose {
+                println!("entering while loop");
+            }
             loop {
+                if is_verbose {
+                    println!("checking while loop condition");
+                }
                 let cond_value = interpret_node(condition, env, is_verbose, true)?;
                 if let Value::Boolean(false) = cond_value {
+                    if is_verbose {
+                        println!("while loop condition false, exiting loop");
+                    }
                     break;
                 }
-
+        
+                if is_verbose {
+                    println!("executing while loop body");
+                }
                 for stmt in body {
                     let result = interpret_node(stmt, env, is_verbose, true)?;
                     match result {
-                        Value::Break => return Ok(Value::Null),
-                        Value::Continue => break,
+                        Value::Break => {
+                            if is_verbose {
+                                println!("break encountered, exiting while loop");
+                            }
+                            return Ok(Value::Null);
+                        },
+                        Value::Continue => {
+                            if is_verbose {
+                                println!("continue encountered, skipping to next iteration");
+                            }
+                            break;
+                        },
                         _ => {}
                     }
                 }
@@ -563,23 +595,49 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
             Ok(Value::Null)
         },
-        ASTNode::For(init, condition, update, body) => {
+                ASTNode::For(init, condition, update, body) => {
+            if is_verbose {
+                println!("initializing for loop");
+            }
             interpret_node(init, env, is_verbose, true)?;
+            
             loop {
+                if is_verbose {
+                    println!("checking for loop condition");
+                }
                 let cond_value = interpret_node(condition, env, is_verbose, true)?;
                 if let Value::Boolean(false) = cond_value {
+                    if is_verbose {
+                        println!("for loop condition false, exiting loop");
+                    }
                     break;
                 }
-
+        
+                if is_verbose {
+                    println!("executing for loop body");
+                }
                 for stmt in body {
                     let result = interpret_node(stmt, env, is_verbose, true)?;
                     match result {
-                        Value::Break => return Ok(Value::Null),
-                        Value::Continue => break,
+                        Value::Break => {
+                            if is_verbose {
+                                println!("break encountered, exiting for loop");
+                            }
+                            return Ok(Value::Null);
+                        },
+                        Value::Continue => {
+                            if is_verbose {
+                                println!("continue encountered, skipping to next iteration");
+                            }
+                            break;
+                        },
                         _ => {}
                     }
                 }
-
+        
+                if is_verbose {
+                    println!("executing for loop update");
+                }
                 interpret_node(update, env, is_verbose, true)?;
             }
             Ok(Value::Null)
@@ -588,11 +646,17 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             if !in_loop {
                 return Err(Error::BreakOutsideLoop);
             }
+            if is_verbose {
+                println!("executing break statement");
+            }
             Ok(Value::Break)
         },
         ASTNode::Continue => {
             if !in_loop {
                 return Err(Error::ContinueOutsideLoop);
+            }
+            if is_verbose {
+                println!("executing continue statement"); 
             }
             Ok(Value::Continue)
         },
