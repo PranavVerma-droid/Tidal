@@ -49,25 +49,67 @@ pub enum ASTNode {
     Return(Option<Box<ASTNode>>),
 }
 
+#[derive(Clone)]
+struct Scope {
+    variables: HashMap<String, bool>,
+    is_function: bool,
+}
+
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
-    symbol_table: HashMap<String, bool>,
+    scopes: Vec<Scope>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer::new(input);
         let current_token = lexer.next_token().unwrap();
-        Parser {
+        let mut parser = Parser {
             lexer,
             current_token,
-            symbol_table: HashMap::new(),
-        }
+            scopes: Vec::new(),
+        };
+        parser.push_scope(false);
+        parser
+    }
+
+    fn push_scope(&mut self, is_function: bool) {
+        self.scopes.push(Scope {
+            variables: HashMap::new(),
+            is_function,
+        });
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn current_scope(&self) -> &Scope {
+        self.scopes.last().unwrap()
+    }
+
+    fn current_scope_mut(&mut self) -> &mut Scope {
+        self.scopes.last_mut().unwrap()
     }
 
     fn remove_from_sym_table(&mut self, name: &str) {
-        self.symbol_table.remove(name);
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.variables.remove(name);
+        }
+    }
+
+    fn is_variable_declared(&self, name: &str) -> bool {
+        if self.current_scope().is_function {
+            return self.current_scope().variables.contains_key(name);
+        }
+        
+        for scope in self.scopes.iter().rev() {
+            if scope.variables.contains_key(name) {
+                return true;
+            }
+        }
+        false
     }
 
     fn eat(&mut self, token: Token) -> Result<(), Error> {
@@ -87,6 +129,7 @@ impl<'a> Parser<'a> {
         Ok(ast_nodes)
     }
 
+
     fn parse_function_decl(&mut self) -> Result<ASTNode, Error> {
         self.eat(Token::Func)?;
         
@@ -96,17 +139,17 @@ impl<'a> Parser<'a> {
         } else {
             return Err(Error::ParserError("Expected function name".to_string()));
         };
-    
+
         if Self::is_keyword(&name) {
             return Err(Error::SyntaxError(format!("Cannot use keyword '{}' as function name", name)));
         }
-    
+
         self.eat(Token::LParen)?;
         
         let mut params = Vec::new();
         while self.current_token != Token::RParen {
             if let Token::Identifier(param) = self.current_token.clone() {
-                params.push(param.clone());  // clone here
+                params.push(param.clone());
                 self.eat(Token::Identifier(param))?;
                 
                 if self.current_token == Token::Comma {
@@ -120,10 +163,14 @@ impl<'a> Parser<'a> {
         self.eat(Token::RParen)?;
         self.eat(Token::LBrace)?;
         
+        self.push_scope(true);
+        
         let mut body = Vec::new();
         while self.current_token != Token::RBrace {
             body.push(self.parse_statement()?);
         }
+        
+        self.pop_scope();
         
         self.eat(Token::RBrace)?;
         
@@ -654,11 +701,11 @@ impl<'a> Parser<'a> {
             return Err(Error::ParserError(format!("Expected identifier in variable declaration at line {}", self.lexer.line)));
         };
 
-        if self.symbol_table.contains_key(&name) {
+        if self.is_variable_declared(&name) {
             return Err(Error::VariableAlreadyDeclared(format!("Variable '{}' has already been declared at line {}", name, self.lexer.line)));
         }
 
-        self.symbol_table.insert(name.clone(), is_mutable);
+        self.current_scope_mut().variables.insert(name.clone(), is_mutable);
 
         let initializer = if self.current_token == Token::Assign {
             self.eat(Token::Assign)?;
