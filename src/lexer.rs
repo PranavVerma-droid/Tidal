@@ -51,6 +51,8 @@ pub enum Token {
     Func,
     Return,
     Input,
+    Len,
+    Del,
     EOF,
 }
 
@@ -213,6 +215,8 @@ impl<'a> Lexer<'a> {
             "func" => Ok(Token::Func),
             "return" => Ok(Token::Return),
             "input" => Ok(Token::Input),
+            "len" => Ok(Token::Len),
+            "del" => Ok(Token::Del),
             _ => Ok(Token::Identifier(identifier)),
         }
     }

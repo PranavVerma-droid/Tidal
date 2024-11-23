@@ -44,6 +44,8 @@ pub enum ASTNode {
     FunctionDecl(String, Vec<String>, Vec<ASTNode>),  // name, params, body
     FunctionCall(String, Vec<ASTNode>),  // name, arguments
     Input(Box<ASTNode>),
+    LenCall(Box<ASTNode>),
+    DelCall(Box<ASTNode>),
     Return(Option<Box<ASTNode>>),
 }
 
@@ -62,6 +64,10 @@ impl<'a> Parser<'a> {
             current_token,
             symbol_table: HashMap::new(),
         }
+    }
+
+    fn remove_from_sym_table(&mut self, name: &str) {
+        self.symbol_table.remove(name);
     }
 
     fn eat(&mut self, token: Token) -> Result<(), Error> {
@@ -149,6 +155,11 @@ impl<'a> Parser<'a> {
             Token::Type => self.parse_type(),
             Token::Func => self.parse_function_decl(),
             Token::Return => self.parse_return(),
+            Token::Del => {
+                let node = self.parse_del()?;
+                self.eat(Token::Semicolon)?;
+                Ok(node)
+            },
             Token::Identifier(name) => {
                 let name = name.clone();
                 self.eat(Token::Identifier(name.clone()))?;
@@ -199,6 +210,17 @@ impl<'a> Parser<'a> {
             "null" | "true" | "false" | "for" | "while" | "break" | "continue" |
             "int" | "str" | "float" | "bool" | "func" | "return"
         )
+    }
+
+    fn parse_del(&mut self) -> Result<ASTNode, Error> {
+        self.eat(Token::Del)?;
+        self.eat(Token::LParen)?;
+        if let Token::Identifier(name) = self.current_token.clone() {
+            self.remove_from_sym_table(&name);
+        }
+        let expr = self.parse_expr()?;
+        self.eat(Token::RParen)?;
+        Ok(ASTNode::DelCall(Box::new(expr)))
     }
 
     fn parse_assign_stmt_with_node(&mut self, left: ASTNode) -> Result<ASTNode, Error> {
@@ -446,6 +468,20 @@ impl<'a> Parser<'a> {
                 self.eat(Token::RParen)?;
                 Ok(ASTNode::Input(Box::new(prompt)))
             },
+            Token::Len => {
+                self.eat(Token::Len)?;
+                self.eat(Token::LParen)?;
+                let expr = self.parse_expr()?;
+                self.eat(Token::RParen)?;
+                Ok(ASTNode::LenCall(Box::new(expr)))
+            },
+            Token::Del => {
+                self.eat(Token::Del)?;
+                self.eat(Token::LParen)?;
+                let expr = self.parse_expr()?;
+                self.eat(Token::RParen)?;
+                Ok(ASTNode::DelCall(Box::new(expr)))
+            },
             Token::Minus => {
                 self.eat(Token::Minus)?;
                 let factor = self.parse_factor()?;
@@ -465,17 +501,17 @@ impl<'a> Parser<'a> {
                 let num = *val;
                 self.eat(Token::Float(num))?;
                 Ok(ASTNode::Float(num))
-            }
+            },
             Token::LParen => {
                 self.eat(Token::LParen)?;
                 let expr = self.parse_expr()?;
                 self.eat(Token::RParen)?;
                 Ok(expr)
-            }
+            },
             Token::LBracket => self.parse_array_literal(),
             Token::Identifier(_) | Token::String(_) | Token::Boolean(_) | Token::Null | Token::TypeLiteral(_) | Token::TypeCast(_) | Token::Type => {
                 self.parse_primary()
-            }
+            },
             _ => Err(Error::ParserError(format!("Unexpected token in factor: {:?} at line {}", self.current_token, self.lexer.line))),
         }
     }
@@ -501,6 +537,13 @@ impl<'a> Parser<'a> {
                 let b = *val;
                 self.eat(Token::Boolean(b))?;
                 ASTNode::Boolean(b)
+            }
+            Token::Del => {
+                self.eat(Token::Del)?;
+                self.eat(Token::LParen)?;
+                let expr = self.parse_expr()?;
+                self.eat(Token::RParen)?;
+                ASTNode::DelCall(Box::new(expr))
             }
             Token::Identifier(var_name) => {
                 let name = var_name.clone();

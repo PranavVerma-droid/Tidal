@@ -96,6 +96,22 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         ASTNode::Float(val) => Ok(Value::Float(*val)),
         ASTNode::Boolean(val) => Ok(Value::Boolean(*val)),
         ASTNode::Null => Ok(Value::Null),
+        ASTNode::LenCall(expr) => {
+            let value = interpret_node(expr, env, is_verbose, in_loop)?;
+            match value {
+                Value::String(s) => Ok(Value::Number(s.chars().count() as i32)),
+                Value::Array(arr) => Ok(Value::Number(arr.len() as i32)),
+                _ => Err(Error::TypeError(format!("Cannot get length of {}", type_str_of_value(&value))))
+            }
+        },
+        ASTNode::DelCall(expr) => {
+            if let ASTNode::Identifier(name) = &**expr {
+                env.variables.remove(name);
+                Ok(Value::Null)
+            } else {
+                Err(Error::TypeError("del() requires a variable name".to_string()))
+            }
+        },
         ASTNode::Input(prompt) => {
             use std::io::{self, Write};
 
