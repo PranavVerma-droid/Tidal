@@ -226,6 +226,14 @@ fn type_str_of_value(value: &Value) -> &'static str {
     }
 }
 
+fn get_array_name(node: &ASTNode) -> Option<String> {
+    if let ASTNode::Identifier(name) = node {
+        Some(name.clone())
+    } else {
+        None
+    }
+}
+
 pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Result<Option<Value>, Error> {
     let mut env = Environment::new();
     let mut result = None;
@@ -510,11 +518,10 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::FunctionCall(name, args) => {
             if let Some(Value::Function(_, params, body)) = env.functions.get(name).cloned() {
-                // create new scope
+                // Create new scope for user-defined functions
                 let mut func_env = Environment::new();
                 func_env.in_function = true;
                 
-
                 let mut evaluated_args = Vec::new();
                 for arg in args {
                     evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
@@ -532,7 +539,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     func_env.insert_var(param.clone(), arg, true);
                 }
                 
-                // exec
+                // Execute function body
                 let mut result = Value::Null;
                 for stmt in body {
                     match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
@@ -547,9 +554,47 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
                 }
                 
-                // Only check embedded libraries for direct function calls
+                // Check standard library functions first
+                if let Some(lib) = env.libraries.get("std") {
+                    if let Some(func) = lib.get_function(name) {
+                        let result = func(evaluated_args.clone())?;
+                        
+                        // Special handling for array modification functions
+                        match name.as_str() {
+                            "insert" | "sort" | "reverse" | "clear" => {
+                                if let Some(array_name) = get_array_name(&args[0]) {
+                                    if let Some((current_value, is_mutable)) = env.get_mut(&array_name) {
+                                        if *is_mutable {
+                                            if let Value::Array(_) = result {
+                                                *current_value = result;
+                                            }
+                                            return Ok(Value::Null);
+                                        } else {
+                                            return Err(Error::TypeError(
+                                                format!("Cannot modify immutable array '{}'", array_name)
+                                            ));
+                                        }
+                                    }
+                                }
+                            },
+                            // Functions that return values
+                            "upper" | "lower" | "strip" | "copy" | "extend" | "count" => {
+                                return Ok(result);
+                            },
+                            _ => return Ok(result),
+                        }
+                    }
+                }
+                
+                // Then check math library
+                if let Some(lib) = env.libraries.get("math") {
+                    if let Some(func) = lib.get_function(name) {
+                        return func(evaluated_args);
+                    }
+                }
+                
+                // Check other libraries (except external ones) for direct calls
                 for (lib_name, lib) in &env.libraries {
-                    // Skip external libraries for direct function calls
                     if lib_name != "std" && lib_name != "math" {
                         continue;
                     }
@@ -645,11 +690,24 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::Assign(name, expr) => {
             let value = interpret_node(expr, env, is_verbose, in_loop)?;
+            
             if let Some((current_value, is_mutable)) = env.get_mut(name) {
                 if !*is_mutable {
                     return Err(Error::TypeError(format!("Cannot assign to immutable variable: {}", name)));
                 }
+        
+
+                match &value {
+                    Value::Array(_) => {
+                        if !*is_mutable {
+                            return Err(Error::TypeError("Cannot modify immutable array".to_string()));
+                        }
+                    },
+                    _ => {}
+                }
+
                 *current_value = value.clone();
+                
                 if is_verbose {
                     println!("assign {} = {:?}", name, value);
                 }
@@ -657,7 +715,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 return Err(Error::VariableNotDeclared(format!("Variable not declared: {}", name)));
             }
             Ok(Value::Null)
-        },
+        }
         ASTNode::IndexAssign(array, index, value) => {
             let array_name = if let ASTNode::Identifier(name) = &**array {
                 name

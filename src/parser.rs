@@ -17,6 +17,34 @@ pub enum Value {
     ReturnValue(Box<Value>),
 }
 
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (Value::Number(a), Value::Number(b)) => a.partial_cmp(b),
+            (Value::Float(a), Value::Float(b)) => a.partial_cmp(b),
+            (Value::String(a), Value::String(b)) => a.partial_cmp(b),
+            _ => None
+        }
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Null, Value::Null) => true,
+            (Value::Type(a), Value::Type(b)) => a == b,
+            (Value::Break, Value::Break) => true,
+            (Value::Continue, Value::Continue) => true,
+            (Value::Array(a), Value::Array(b)) => a == b,
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ASTNode {
     Number(i32),
