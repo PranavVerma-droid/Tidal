@@ -1,6 +1,9 @@
 use crate::parser::{ASTNode, Value};
 use crate::lexer::Token;
 use crate::error::Error;
+use crate::libs::Library;
+use crate::libs::std::StdLib;
+use crate::libs::math::MathLib;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -29,20 +32,25 @@ impl fmt::Display for Value {
     }
 }
 
-
 pub struct Environment {
     variables: HashMap<String, (Value, bool)>,
     functions: HashMap<String, Value>,
     in_function: bool,
+    libraries: HashMap<String, Box<dyn Library>>,
 }
+
 
 impl Environment {
     pub fn new() -> Self {
-        Environment {
+        let mut env = Environment {
             variables: HashMap::new(),
             functions: HashMap::new(),
             in_function: false,
-        }
+            libraries: HashMap::new(),
+        };
+
+        env.libraries.insert("std".to_string(), Box::new(StdLib::new()));
+        env
     }
 
     pub fn get(&self, name: &str) -> Option<&(Value, bool)> {
@@ -59,6 +67,44 @@ impl Environment {
 
     pub fn insert_function(&mut self, name: String, value: Value) {
         self.functions.insert(name, value);
+    }
+
+    pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
+        if self.libraries.contains_key(name) {
+            if name == "std" {
+                return Ok(());  // Allow one explicit std import
+            }
+            return Err(Error::InterpreterError("Library already imported".to_string()));
+        }
+    
+        match mode {
+            Some("embedded") => {
+                match name {
+                    "math" => {
+                        self.libraries.insert(name.to_string(), Box::new(MathLib::new()));
+                    }
+                    "std" => {
+                        self.libraries.insert(name.to_string(), Box::new(StdLib::new()));
+                    }
+                    _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
+                };
+            }
+            Some("external") => {
+                return Err(Error::InterpreterError("External libraries not yet supported".to_string()));
+            }
+            Some(_) => {
+                return Err(Error::InterpreterError("Invalid import mode".to_string()));
+            }
+            None => {
+                // Try embedded first, then external
+                if let Ok(_) = self.import_library(name, Some("embedded")) {
+                    return Ok(());
+                }
+                return self.import_library(name, Some("external"));
+            }
+        }
+    
+        Ok(())
     }
 }
 
@@ -96,6 +142,47 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         ASTNode::Float(val) => Ok(Value::Float(*val)),
         ASTNode::Boolean(val) => Ok(Value::Boolean(*val)),
         ASTNode::Null => Ok(Value::Null),
+        ASTNode::Import(name, mode) => {
+            env.import_library(name, mode.as_deref())?;
+            Ok(Value::Null)
+        }
+        ASTNode::LibraryAccess(lib_name, item_name) => {
+            if let Some(lib) = env.libraries.get(lib_name) {
+                if let Some(constant) = lib.get_constant(item_name) {
+                    Ok(constant.clone())
+                } else if let Some(_func) = lib.get_function(item_name) {
+                    // Return function wrapper
+                    Ok(Value::Function(
+                        format!("{}.{}", lib_name, item_name),
+                        vec![],
+                        vec![]
+                    ))
+                } else {
+                    Err(Error::InterpreterError(format!("Item '{}' not found in library '{}'", item_name, lib_name)))
+                }
+            } else {
+                Err(Error::InterpreterError(format!("Library '{}' not found", lib_name)))
+            }
+        }
+        ASTNode::LibraryFunctionCall(lib_name, func_name, args) => {
+            let evaluated_args = {
+                let mut args_vec = Vec::new();
+                for arg in args {
+                    args_vec.push(interpret_node(arg, env, is_verbose, in_loop)?);
+                }
+                args_vec
+            };
+            
+            if let Some(lib) = env.libraries.get(lib_name) {
+                if let Some(func) = lib.get_function(func_name) {
+                    func(evaluated_args)
+                } else {
+                    Err(Error::InterpreterError(format!("Function '{}' not found in library '{}'", func_name, lib_name)))
+                }
+            } else {
+                Err(Error::InterpreterError(format!("Library '{}' not found", lib_name)))
+            }
+        }
         ASTNode::LenCall(expr) => {
             let value = interpret_node(expr, env, is_verbose, in_loop)?;
             match value {

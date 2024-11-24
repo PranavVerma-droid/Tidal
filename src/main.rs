@@ -9,6 +9,7 @@ mod interpreter;
 mod lexer;
 mod parser;
 mod error;
+mod libs;
 
 fn main() {
     // collect args

@@ -53,6 +53,10 @@ pub enum Token {
     Input,
     Len,
     Del,
+    Import,
+    External,
+    Embedded,
+    Dot,
     EOF,
 }
 
@@ -117,6 +121,7 @@ impl<'a> Lexer<'a> {
                     Ok(Token::Not)
                 }
             },
+            Some('.') => Ok(Token::Dot),
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
                 '+' => Ok(Token::Plus),
@@ -217,6 +222,9 @@ impl<'a> Lexer<'a> {
             "input" => Ok(Token::Input),
             "len" => Ok(Token::Len),
             "del" => Ok(Token::Del),
+            "import" => Ok(Token::Import),
+            "external" => Ok(Token::External), 
+            "embedded" => Ok(Token::Embedded),
             _ => Ok(Token::Identifier(identifier)),
         }
     }

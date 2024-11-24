@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-for file in ./code/Normal/*.td; 
+for file in ../Examples/Normal/*.td; 
 do
     ./td "$file"
 done

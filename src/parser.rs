@@ -47,6 +47,9 @@ pub enum ASTNode {
     LenCall(Box<ASTNode>),
     DelCall(Box<ASTNode>),
     Return(Option<Box<ASTNode>>),
+    Import(String, Option<String>),
+    LibraryAccess(String, String), 
+    LibraryFunctionCall(String, String, Vec<ASTNode>),
 }
 
 #[derive(Clone)]
@@ -73,6 +76,60 @@ impl<'a> Parser<'a> {
         parser.push_scope(false);
         parser
     }
+
+    fn parse_import(&mut self) -> Result<ASTNode, Error> {
+        self.eat(Token::Import)?;
+        self.eat(Token::LParen)?;
+        
+        let lib_name = if let Token::Identifier(name) = self.current_token.clone() {
+            self.eat(Token::Identifier(name.clone()))?;
+            name
+        } else {
+            return Err(Error::ParserError("Expected library name".to_string()));
+        };
+
+        let mode = if self.current_token == Token::Comma {
+            self.eat(Token::Comma)?;
+            match self.current_token {
+                Token::Embedded => {
+                    self.eat(Token::Embedded)?;
+                    Some("embedded".to_string())
+                }
+                Token::External => {
+                    self.eat(Token::External)?;
+                    Some("external".to_string())
+                }
+                _ => return Err(Error::ParserError("Expected 'embedded' or 'external'".to_string()))
+            }
+        } else {
+            None
+        };
+
+        self.eat(Token::RParen)?;
+        self.eat(Token::Semicolon)?;
+
+        Ok(ASTNode::Import(lib_name, mode))
+    }
+    /*
+    fn parse_library_access(&mut self) -> Result<ASTNode, Error> {
+        let lib_name = if let Token::Identifier(name) = self.current_token.clone() {
+            self.eat(Token::Identifier(name.clone()))?;
+            name
+        } else {
+            return Err(Error::ParserError("Expected library name".to_string()));
+        };
+
+        self.eat(Token::Dot)?;
+
+        let item_name = if let Token::Identifier(name) = self.current_token.clone() {
+            self.eat(Token::Identifier(name.clone()))?;
+            name
+        } else {
+            return Err(Error::ParserError("Expected function/constant name".to_string()));
+        };
+
+        Ok(ASTNode::LibraryAccess(lib_name, item_name))
+    }*/
 
     fn push_scope(&mut self, is_function: bool) {
         self.scopes.push(Scope {
@@ -190,6 +247,7 @@ impl<'a> Parser<'a> {
         
         Ok(ASTNode::Return(expr))
     }
+    
     fn parse_statement(&mut self) -> Result<ASTNode, Error> {
         match &self.current_token {
             Token::Var | Token::NoVar => self.parse_var_decl(),
@@ -207,13 +265,13 @@ impl<'a> Parser<'a> {
                 self.eat(Token::Semicolon)?;
                 Ok(node)
             },
+            Token::Import => self.parse_import(),
             Token::Identifier(name) => {
                 let name = name.clone();
                 self.eat(Token::Identifier(name.clone()))?;
                 
                 match &self.current_token {
                     Token::LParen => {
-                        // function call
                         self.eat(Token::LParen)?;
                         let mut args = Vec::new();
                         
@@ -229,13 +287,59 @@ impl<'a> Parser<'a> {
                         }
                         
                         self.eat(Token::RParen)?;
-                        self.eat(Token::Semicolon)?; 
-                        
+                        self.eat(Token::Semicolon)?;
                         Ok(ASTNode::FunctionCall(name, args))
                     },
-                    Token::Assign | Token::LBracket => {
-                        let node = ASTNode::Identifier(name);
-                        self.parse_assign_stmt_with_node(node)
+                    Token::Assign => {
+                        self.eat(Token::Assign)?;
+                        let value = self.parse_expr()?;
+                        self.eat(Token::Semicolon)?;
+                        Ok(ASTNode::Assign(name, Box::new(value)))
+                    },
+                    Token::LBracket => {
+                        self.eat(Token::LBracket)?;
+                        let index = self.parse_expr()?;
+                        self.eat(Token::RBracket)?;
+                        self.eat(Token::Assign)?;
+                        let value = self.parse_expr()?;
+                        self.eat(Token::Semicolon)?;
+                        Ok(ASTNode::IndexAssign(
+                            Box::new(ASTNode::Identifier(name)),
+                            Box::new(index),
+                            Box::new(value)
+                        ))
+                    },
+                    Token::Dot => {
+                        self.eat(Token::Dot)?;
+                        let item_name = if let Token::Identifier(name) = self.current_token.clone() {
+                            self.eat(Token::Identifier(name.clone()))?;
+                            name
+                        } else {
+                            return Err(Error::ParserError("Expected identifier after dot".to_string()));
+                        };
+    
+                        if self.current_token == Token::LParen {
+                            self.eat(Token::LParen)?;
+                            let mut args = Vec::new();
+                            
+                            if self.current_token != Token::RParen {
+                                loop {
+                                    args.push(self.parse_expr()?);
+                                    if self.current_token == Token::Comma {
+                                        self.eat(Token::Comma)?;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            self.eat(Token::RParen)?;
+                            self.eat(Token::Semicolon)?;
+                            Ok(ASTNode::LibraryFunctionCall(name, item_name, args))
+                        } else {
+                            self.eat(Token::Semicolon)?;
+                            Ok(ASTNode::LibraryAccess(name, item_name))
+                        }
                     },
                     _ => Err(Error::ParserError(format!(
                         "Unexpected token after identifier: {:?} at line {}", 
@@ -251,6 +355,8 @@ impl<'a> Parser<'a> {
             ))),
         }
     }
+
+
     fn is_keyword(name: &str) -> bool {
         matches!(name, 
             "var" | "novar" | "print" | "type" | "if" | "elif" | "else" | 
@@ -270,6 +376,7 @@ impl<'a> Parser<'a> {
         Ok(ASTNode::DelCall(Box::new(expr)))
     }
 
+    /* 
     fn parse_assign_stmt_with_node(&mut self, left: ASTNode) -> Result<ASTNode, Error> {
         if let ASTNode::Identifier(name) = &left { //check for array first
             if self.current_token == Token::LBracket {
@@ -296,6 +403,7 @@ impl<'a> Parser<'a> {
             _ => Err(Error::ParserError("Invalid assignment target".to_string()))
         }
     }
+    */
 
     fn parse_type(&mut self) -> Result<ASTNode, Error> {
         self.eat(Token::Type)?;
@@ -596,26 +704,58 @@ impl<'a> Parser<'a> {
                 let name = var_name.clone();
                 self.eat(Token::Identifier(name.clone()))?;
                 
-                // check for function call
-                if self.current_token == Token::LParen {
-                    self.eat(Token::LParen)?;
-                    let mut args = Vec::new();
-                    
-                    if self.current_token != Token::RParen {
-                        loop {
-                            args.push(self.parse_expr()?);
-                            if self.current_token == Token::Comma {
-                                self.eat(Token::Comma)?;
-                            } else {
-                                break;
+                match self.current_token {
+                    Token::Dot => {
+                        self.eat(Token::Dot)?;
+                        let item_name = if let Token::Identifier(name) = self.current_token.clone() {
+                            self.eat(Token::Identifier(name.clone()))?;
+                            name
+                        } else {
+                            return Err(Error::ParserError("Expected identifier after dot".to_string()));
+                        };
+    
+                        // check for lib
+                        if self.current_token == Token::LParen {
+                            self.eat(Token::LParen)?;
+                            let mut args = Vec::new();
+                            
+                            if self.current_token != Token::RParen {
+                                loop {
+                                    args.push(self.parse_expr()?);
+                                    if self.current_token == Token::Comma {
+                                        self.eat(Token::Comma)?;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            self.eat(Token::RParen)?;
+                            ASTNode::LibraryFunctionCall(name, item_name, args)
+                        } else {
+                            ASTNode::LibraryAccess(name, item_name)
+                        }
+                    },
+                    Token::LParen => {
+                        // reg func call
+                        self.eat(Token::LParen)?;
+                        let mut args = Vec::new();
+                        
+                        if self.current_token != Token::RParen {
+                            loop {
+                                args.push(self.parse_expr()?);
+                                if self.current_token == Token::Comma {
+                                    self.eat(Token::Comma)?;
+                                } else {
+                                    break;
+                                }
                             }
                         }
-                    }
-                    
-                    self.eat(Token::RParen)?;
-                    ASTNode::FunctionCall(name, args)
-                } else {
-                    ASTNode::Identifier(name)
+                        
+                        self.eat(Token::RParen)?;
+                        ASTNode::FunctionCall(name, args)
+                    },
+                    _ => ASTNode::Identifier(name)
                 }
             }
             Token::TypeLiteral(type_name) => {
