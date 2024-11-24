@@ -66,6 +66,28 @@ impl MathLib {
                     _ => Err(Error::TypeError("pow() requires numeric arguments".to_string()))
                 }
             }));
+            
+            self.functions.insert("gcd".to_string(), Box::new(|args| {
+                if args.len() != 2 {
+                    return Err(Error::TypeError("gcd() takes exactly 2 arguments".to_string()));
+                }
+
+                fn calculate_gcd(mut a: i32, mut b: i32) -> i32 {
+                    a = a.abs();
+                    b = b.abs();
+                    while b != 0 {
+                        let temp = b;
+                        b = a % b;
+                        a = temp;
+                    }
+                    a
+                }
+
+                match (&args[0], &args[1]) {
+                    (Value::Number(a), Value::Number(b)) => Ok(Value::Number(calculate_gcd(*a, *b))),
+                    _ => Err(Error::TypeError("gcd() requires integer arguments".to_string()))
+                }
+            }));
     
             self.functions.insert("sqrt".to_string(), Box::new(|args| {
                 if args.len() != 1 {

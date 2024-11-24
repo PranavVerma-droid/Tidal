@@ -114,18 +114,15 @@ impl Environment {
     }
 
     fn load_external_library(&mut self, name: &str) -> Result<(), Error> {
-        // Get the current source file path from env args
         let args: Vec<String> = std::env::args().collect();
         if args.len() < 2 {
             return Err(Error::FileNotFound("No source file specified".to_string()));
         }
     
-        // Get source file's directory
         let source_path = std::path::Path::new(&args[1]);
         let source_dir = source_path.parent()
             .ok_or_else(|| Error::FileNotFound("Could not determine source file directory".to_string()))?;
     
-        // Construct library path
         let lib_filename = format!("{}.tdx", name);
         let lib_path = source_dir.join(&lib_filename);
     
@@ -178,7 +175,6 @@ impl ExternalLibrary {
             let mut env = Environment::new();
             env.in_function = true;
 
-            // Check args length
             if args.len() != params.len() {
                 return Err(Error::TypeError(format!(
                     "Function '{}' expects {} arguments but got {}", 
@@ -186,12 +182,10 @@ impl ExternalLibrary {
                 )));
             }
 
-            // Bind arguments to parameters
             for (param, arg) in params.iter().zip(args) {
                 env.insert_var(param.clone(), arg, true);
             }
 
-            // Execute function body
             let mut result = Value::Null;
             for node in &body {
                 match interpret_node(node, &mut env, false, false)? {
