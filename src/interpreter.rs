@@ -1,11 +1,18 @@
 use crate::parser::{ASTNode, Value};
 use crate::lexer::Token;
 use crate::error::Error;
+use crate::parser::Parser;
 use crate::libs::Library;
 use crate::libs::std::StdLib;
 use crate::libs::math::MathLib;
+use std::sync::{Arc, Mutex};
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::fmt;
+
+lazy_static! {
+    static ref FUNCTION_CACHE: Mutex<HashMap<String, Arc<Box<dyn Fn(Vec<Value>) -> Result<Value, Error> + Send + Sync>>>> = Mutex::new(HashMap::new());
+}
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -72,7 +79,7 @@ impl Environment {
     pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
         if self.libraries.contains_key(name) {
             if name == "std" {
-                return Ok(());  // Allow one explicit std import
+                return Ok(());
             }
             return Err(Error::InterpreterError("Library already imported".to_string()));
         }
@@ -90,13 +97,12 @@ impl Environment {
                 };
             }
             Some("external") => {
-                return Err(Error::InterpreterError("External libraries not yet supported".to_string()));
+                self.load_external_library(name)?;
             }
             Some(_) => {
                 return Err(Error::InterpreterError("Invalid import mode".to_string()));
             }
             None => {
-                // Try embedded first, then external
                 if let Ok(_) = self.import_library(name, Some("embedded")) {
                     return Ok(());
                 }
@@ -105,6 +111,108 @@ impl Environment {
         }
     
         Ok(())
+    }
+
+    fn load_external_library(&mut self, name: &str) -> Result<(), Error> {
+        // Get the current source file path from env args
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() < 2 {
+            return Err(Error::FileNotFound("No source file specified".to_string()));
+        }
+    
+        // Get source file's directory
+        let source_path = std::path::Path::new(&args[1]);
+        let source_dir = source_path.parent()
+            .ok_or_else(|| Error::FileNotFound("Could not determine source file directory".to_string()))?;
+    
+        // Construct library path
+        let lib_filename = format!("{}.tdx", name);
+        let lib_path = source_dir.join(&lib_filename);
+    
+        if !lib_path.exists() {
+            return Err(Error::FileNotFound(format!("External library '{}' not found", name)));
+        }
+    
+        let contents = std::fs::read_to_string(&lib_path)
+            .map_err(|_| Error::FileNotFound(format!("Failed to read library file '{}'", lib_path.display())))?;
+    
+        let mut parser = Parser::new(&contents);
+        let ast = parser.parse()?;
+        let mut lib = ExternalLibrary::new();
+    
+        for node in ast {
+            match node {
+                ASTNode::FunctionDecl(name, params, body) => {
+                    lib.add_function(name, params, body);
+                },
+                _ => return Err(Error::InterpreterError(
+                    "External libraries can only contain function declarations".to_string()
+                ))
+            }
+        }
+    
+        self.libraries.insert(name.to_string(), Box::new(lib));
+        Ok(())
+    }
+}
+
+
+
+pub struct ExternalLibrary {
+    functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
+}
+
+impl ExternalLibrary {
+    pub fn new() -> Self {
+        ExternalLibrary {
+            functions: HashMap::new()
+        }
+    }
+
+    pub fn add_function(&mut self, name: String, params: Vec<String>, body: Vec<ASTNode>) {
+        let func_name = name.clone();
+        let params = params.clone();
+        let body = body.clone();
+        
+        let function = Box::new(move |args: Vec<Value>| -> Result<Value, Error> {
+            let mut env = Environment::new();
+            env.in_function = true;
+
+            // Check args length
+            if args.len() != params.len() {
+                return Err(Error::TypeError(format!(
+                    "Function '{}' expects {} arguments but got {}", 
+                    func_name, params.len(), args.len()
+                )));
+            }
+
+            // Bind arguments to parameters
+            for (param, arg) in params.iter().zip(args) {
+                env.insert_var(param.clone(), arg, true);
+            }
+
+            // Execute function body
+            let mut result = Value::Null;
+            for node in &body {
+                match interpret_node(node, &mut env, false, false)? {
+                    Value::ReturnValue(val) => return Ok(*val),
+                    val => result = val,
+                }
+            }
+            Ok(result)
+        });
+
+        self.functions.insert(name, function);
+    }
+}
+
+impl Library for ExternalLibrary {
+    fn get_function(&self, name: &str) -> Option<&Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>> {
+        self.functions.get(name)
+    }
+
+    fn get_constant(&self, _name: &str) -> Option<&Value> {
+        None
     }
 }
 
@@ -151,7 +259,6 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 if let Some(constant) = lib.get_constant(item_name) {
                     Ok(constant.clone())
                 } else if let Some(_func) = lib.get_function(item_name) {
-                    // Return function wrapper
                     Ok(Value::Function(
                         format!("{}.{}", lib_name, item_name),
                         vec![],
@@ -441,6 +548,23 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 }
                 Ok(result)
             } else {
+                let mut evaluated_args = Vec::new();
+                for arg in args {
+                    evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
+                }
+                
+                // Only check embedded libraries for direct function calls
+                for (lib_name, lib) in &env.libraries {
+                    // Skip external libraries for direct function calls
+                    if lib_name != "std" && lib_name != "math" {
+                        continue;
+                    }
+                    
+                    if let Some(func) = lib.get_function(name) {
+                        return func(evaluated_args);
+                    }
+                }
+                
                 Err(Error::VariableNotDeclared(format!("Function '{}' not defined", name)))
             }
         },
