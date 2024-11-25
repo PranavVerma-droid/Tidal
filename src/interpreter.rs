@@ -6,6 +6,7 @@ use crate::libs::Library;
 use crate::libs::std::StdLib;
 use crate::libs::math::MathLib;
 use crate::libs::sys::SysLib;
+use crate::libs::os::OSLib;
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -106,6 +107,9 @@ impl Environment {
                     }   
                     "std" => {
                         self.libraries.insert(name.to_string(), Box::new(StdLib::new()));
+                    }
+                    "os" => {
+                        self.libraries.insert(name.to_string(), Box::new(OSLib::new()));
                     }
                     _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
                 };
@@ -530,96 +534,90 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 _ => Err(Error::TypeError(format!("Invalid indexing operation"))),
             }
         },
-                ASTNode::FunctionCall(name, args) => {
-            let mut evaluated_args = Vec::new();
-            for arg in args {
-                evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
-            }
         
-            // Check if this is a library function call (contains dot)
-            if let Some(dot_pos) = name.find('.') {
-                let lib_name = &name[..dot_pos];
-                let func_name = &name[dot_pos + 1..];
         
-                // Get the library
-                if let Some(lib) = env.libraries.get(lib_name) {
-                    // Get the function from library
-                    if let Some(func) = lib.get_function(func_name) {
-                        let result = func(evaluated_args.clone())?;
-        
-                        // Special handling for std library array modification functions
-                        if lib_name == "std" {
-                            match func_name {
-                                "insert" | "sort" | "reverse" | "clear" => {
-                                    if let Some(array_name) = get_array_name(&args[0]) {
-                                        if let Some((current_value, is_mutable)) = env.get_mut(&array_name) {
-                                            if *is_mutable {
-                                                if let Value::Array(_) = result {
-                                                    *current_value = result;
+             ASTNode::FunctionCall(name, args) => {
+                let mut evaluated_args = Vec::new();
+                for arg in args {
+                    evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
+                }
+            
+                // Check if this is a library function call (contains dot)
+                if let Some(dot_pos) = name.find('.') {
+                    let lib_name = &name[..dot_pos];
+                    let func_name = &name[dot_pos + 1..];
+            
+                    // Get the library
+                    if let Some(lib) = env.libraries.get(lib_name) {
+                        // Get the function from library
+                        if let Some(func) = lib.get_function(func_name) {
+                            let result = func(evaluated_args)?;
+                            
+                            // Special handling for std library array modification functions
+                            if lib_name == "std" {
+                                match func_name {
+                                    "insert" | "sort" | "reverse" | "clear" => {
+                                        if let Some(array_name) = get_array_name(&args[0]) {
+                                            if let Some((current_value, is_mutable)) = env.get_mut(&array_name) {
+                                                if *is_mutable {
+                                                    if let Value::Array(_) = &result {
+                                                        *current_value = result.clone();
+                                                    }
+                                                    return Ok(Value::Null);
+                                                } else {
+                                                    return Err(Error::TypeError(
+                                                        format!("Cannot modify immutable array '{}'", array_name)
+                                                    ));
                                                 }
-                                                return Ok(Value::Null);
-                                            } else {
-                                                return Err(Error::TypeError(
-                                                    format!("Cannot modify immutable array '{}'", array_name)
-                                                ));
                                             }
                                         }
-                                    }
-                                },
-                                // Functions that return values
-                                "upper" | "lower" | "strip" | "copy" | "extend" | "count" => {
-                                    return Ok(result);
-                                },
-                                _ => return Ok(result),
+                                    },
+                                    _ => {}
+                                }
                             }
+                            return Ok(result);
                         }
-                        return Ok(result);
+                        return Err(Error::VariableNotDeclared(
+                            format!("Function '{}' not found in library '{}'", func_name, lib_name)
+                        ));
                     }
                     return Err(Error::VariableNotDeclared(
-                        format!("Function '{}' not found in library '{}'", func_name, lib_name)
+                        format!("Library '{}' not found", lib_name)
                     ));
                 }
-                return Err(Error::VariableNotDeclared(
-                    format!("Library '{}' not found", lib_name)
-                ));
-            }
-        
-            // If no dot, check if it's a user-defined function
-            if let Some(Value::Function(_, params, body)) = env.functions.get(name).cloned() {
-                // Create new scope for user-defined functions
-                let mut func_env = Environment::new();
-                func_env.in_function = true;
-        
-                // Check argument count
-                if params.len() != evaluated_args.len() {
-                    return Err(Error::TypeError(format!(
-                        "Function '{}' expects {} arguments but got {}", 
-                        name, params.len(), evaluated_args.len()
-                    )));
-                }
-        
-                // Bind parameters to arguments
-                for (param, arg) in params.iter().zip(evaluated_args) {
-                    func_env.insert_var(param.clone(), arg, true);
-                }
-        
-                // Execute function body
-                let mut result = Value::Null;
-                for stmt in body {
-                    match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
-                        Value::ReturnValue(val) => return Ok(*val),
-                        val => result = val,
+            
+                // Handle non-library function calls
+                match env.functions.get(name).cloned() {
+                    Some(Value::Function(_, params, body)) => {
+                        let mut func_env = Environment::new();
+                        func_env.in_function = true;
+            
+                        if params.len() != evaluated_args.len() {
+                            return Err(Error::TypeError(format!(
+                                "Function '{}' expects {} arguments but got {}", 
+                                name, params.len(), evaluated_args.len()
+                            )));
+                        }
+            
+                        for (param, arg) in params.iter().zip(evaluated_args) {
+                            func_env.insert_var(param.clone(), arg, true);
+                        }
+            
+                        let mut result = Value::Null;
+                        for stmt in body {
+                            match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
+                                Value::ReturnValue(val) => return Ok(*val),
+                                val => result = val,
+                            }
+                        }
+                        Ok(result)
                     }
+                    _ => Err(Error::InterpreterError(format!(
+                        "Function '{}' must be called with library prefix (e.g. std.{})", 
+                        name, name
+                    )))
                 }
-                Ok(result)
-            } else {
-                // Not a user-defined function and no library prefix
-                Err(Error::InterpreterError(format!(
-                    "Function '{}' must be called with library prefix (e.g. std.{})", 
-                    name, name
-                )))
-            }
-        }
+            },
         ASTNode::Return(expr) => {
             if !env.in_function {
                 return Err(Error::SyntaxError("'return' outside function".to_string()));
