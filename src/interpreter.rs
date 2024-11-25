@@ -57,6 +57,16 @@ impl Environment {
             libraries: HashMap::new(),
         };
 
+        let std_lib = StdLib::new();
+        
+        for (name, _func) in std_lib.get_function_map().iter() {
+            env.functions.insert(name.clone(), Value::Function(
+                name.clone(),
+                vec![],
+                vec![]
+            ));
+        }
+
         env.libraries.insert("std".to_string(), Box::new(StdLib::new()));
         env
     }

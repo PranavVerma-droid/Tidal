@@ -138,7 +138,7 @@ impl<'a> Parser<'a> {
 
         Ok(ASTNode::Import(lib_name, mode))
     }
-    /*
+    /*     
     fn parse_library_access(&mut self) -> Result<ASTNode, Error> {
         let lib_name = if let Token::Identifier(name) = self.current_token.clone() {
             self.eat(Token::Identifier(name.clone()))?;
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ASTNode::LibraryAccess(lib_name, item_name))
-    }*/
+    } */
 
     fn push_scope(&mut self, is_function: bool) {
         self.scopes.push(Scope {

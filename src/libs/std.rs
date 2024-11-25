@@ -29,6 +29,10 @@ impl StdLib {
         lib
     }
 
+    pub fn get_function_map(&self) -> &HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>> {
+        &self.functions
+    }
+
     fn register_functions(&mut self) {
         // print() function
         self.functions.insert("print".to_string(), Box::new(|args| {
