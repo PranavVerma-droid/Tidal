@@ -26,7 +26,7 @@ The Latest Compiled Build Can Be Found in the [Releases](https://github.com/Pran
 For detailed documentation, syntax, and examples, please check the [Wiki](https://github.com/PranavVerma-droid/Tidal/wiki).
 
 ## Syntax
-The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Repository.
+The Sample Code Along with the Basic Syntax Can be Found in the [Code Examples](https://github.com/Tidal-Lang/Code-Examples) Repository.
 
 ## Development (Linux or WSL)
 
