@@ -26,23 +26,33 @@ The Latest Compiled Build Can Be Found in the [Releases](https://github.com/Pran
 For detailed documentation, syntax, and examples, please check the [Wiki](https://github.com/PranavVerma-droid/Tidal/wiki).
 
 ## Syntax
-The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Directory.
+The Sample Code Along with the Basic Syntax Can be Found in the [Code](code) Repository.
 
 ## Development (Linux or WSL)
 
 ### Dependencies
-```chmod +x scripts/install.sh``` <br>
-```./scripts/install.sh```
+- Rust
+- Cargo Toolchain
 
 ### Compile
-```cargo build --release``` <br>
+For Unix systems:
+```bash
+cargo build --release --features unix
+```
+
+For Windows Systems:
+```bash
+cargo build --release
+```
 
 ### Run
-```./td <FILENAME.td> -v```
+```./td <FILENAME.td>```
 
 OR 
 
-```./td <FILENAME.br> -v```
+```./td <FILENAME.br>```
+
+For a Detailed Guide, Please Check out the [For Developers](https://github.com/Tidal-Lang/Tidal/wiki/For-Developers) Page.
 
 
 
