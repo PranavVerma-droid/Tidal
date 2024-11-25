@@ -84,6 +84,7 @@ pub enum ASTNode {
 struct Scope {
     variables: HashMap<String, bool>,
     is_function: bool,
+    is_block: bool,
 }
 
 pub struct Parser<'a> {
@@ -101,7 +102,7 @@ impl<'a> Parser<'a> {
             current_token,
             scopes: Vec::new(),
         };
-        parser.push_scope(false);
+        parser.push_scope(false, false);
         parser
     }
 
@@ -159,10 +160,11 @@ impl<'a> Parser<'a> {
         Ok(ASTNode::LibraryAccess(lib_name, item_name))
     } */
 
-    fn push_scope(&mut self, is_function: bool) {
+    fn push_scope(&mut self, is_function: bool, is_block: bool) {
         self.scopes.push(Scope {
             variables: HashMap::new(),
             is_function,
+            is_block,
         });
     }
 
@@ -185,13 +187,16 @@ impl<'a> Parser<'a> {
     }
 
     fn is_variable_declared(&self, name: &str) -> bool {
-        if self.current_scope().is_function {
+        if self.current_scope().is_block {
             return self.current_scope().variables.contains_key(name);
         }
         
         for scope in self.scopes.iter().rev() {
             if scope.variables.contains_key(name) {
                 return true;
+            }
+            if scope.is_function {
+                break;
             }
         }
         false
@@ -248,7 +253,7 @@ impl<'a> Parser<'a> {
         self.eat(Token::RParen)?;
         self.eat(Token::LBrace)?;
         
-        self.push_scope(true);
+        self.push_scope(true, false);
         
         let mut body = Vec::new();
         while self.current_token != Token::RBrace {
@@ -447,9 +452,14 @@ impl<'a> Parser<'a> {
         self.eat(Token::LParen)?;
         let condition = self.parse_expr()?;
         self.eat(Token::RParen)?;
+        
+        self.push_scope(false, true);
+        
         self.eat(Token::LBrace)?;
         let body = self.parse_block()?;
         self.eat(Token::RBrace)?;
+        
+        self.pop_scope();
 
         Ok(ASTNode::While(Box::new(condition), body))
     }
@@ -491,6 +501,8 @@ impl<'a> Parser<'a> {
         self.eat(Token::For)?;
         self.eat(Token::LParen)?;
 
+        self.push_scope(false, true);
+
         let init = if let Token::Var | Token::NoVar = self.current_token {
             self.parse_var_decl()?
         } else {
@@ -506,6 +518,8 @@ impl<'a> Parser<'a> {
         self.eat(Token::LBrace)?;
         let body = self.parse_block()?;
         self.eat(Token::RBrace)?;
+
+        self.pop_scope();
 
         Ok(ASTNode::For(Box::new(init), Box::new(condition), Box::new(update), body))
     }
@@ -924,3 +938,4 @@ impl<'a> Parser<'a> {
         Ok(ASTNode::Print(Box::new(expr)))
     }
 }
+

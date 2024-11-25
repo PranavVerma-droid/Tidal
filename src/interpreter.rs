@@ -42,7 +42,7 @@ impl fmt::Display for Value {
 }
 
 pub struct Environment {
-    variables: HashMap<String, (Value, bool)>,
+    scopes: Vec<HashMap<String, (Value, bool)>>,
     functions: HashMap<String, Value>,
     in_function: bool,
     libraries: HashMap<String, Box<dyn Library>>,
@@ -52,14 +52,13 @@ pub struct Environment {
 impl Environment {
     pub fn new() -> Self {
         let mut env = Environment {
-            variables: HashMap::new(),
+            scopes: vec![HashMap::new()],
             functions: HashMap::new(),
             in_function: false,
             libraries: HashMap::new(),
         };
 
         let std_lib = StdLib::new();
-        
         for (name, _func) in std_lib.get_function_map().iter() {
             env.functions.insert(name.clone(), Value::Function(
                 name.clone(),
@@ -72,16 +71,36 @@ impl Environment {
         env
     }
 
+    pub fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    pub fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
     pub fn get(&self, name: &str) -> Option<&(Value, bool)> {
-        self.variables.get(name)
+        for scope in self.scopes.iter().rev() {
+            if let Some(value) = scope.get(name) {
+                return Some(value);
+            }
+        }
+        None
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut (Value, bool)> {
-        self.variables.get_mut(name)
+        for scope in self.scopes.iter_mut().rev() {
+            if let Some(value) = scope.get_mut(name) {
+                return Some(value);
+            }
+        }
+        None
     }
 
     pub fn insert_var(&mut self, name: String, value: Value, mutable: bool) {
-        self.variables.insert(name, (value, mutable));
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.insert(name, (value, mutable));
+        }
     }
 
     pub fn insert_function(&mut self, name: String, value: Value) {
@@ -323,7 +342,9 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 if is_verbose {
                     println!("delete variable '{}'", name);
                 }
-                env.variables.remove(name);
+                if let Some(scope) = env.scopes.last_mut() {
+                    scope.remove(name);
+                }
                 Ok(Value::Null)
             } else {
                 Err(Error::TypeError("del() requires a variable name".to_string()))
@@ -534,9 +555,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 _ => Err(Error::TypeError(format!("Invalid indexing operation"))),
             }
         },
-        
-        
-             ASTNode::FunctionCall(name, args) => {
+        ASTNode::FunctionCall(name, args) => {
                 let mut evaluated_args = Vec::new();
                 for arg in args {
                     evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
@@ -648,44 +667,30 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::While(condition, body) => {
-            if is_verbose {
-                println!("entering while loop");
-            }
-            loop {
-                if is_verbose {
-                    println!("checking while loop condition");
-                }
+            env.push_scope();
+            
+            let mut result = Value::Null;
+            'outer: loop {
                 let cond_value = interpret_node(condition, env, is_verbose, true)?;
                 if let Value::Boolean(false) = cond_value {
-                    if is_verbose {
-                        println!("while loop condition false, exiting loop");
-                    }
                     break;
                 }
         
-                if is_verbose {
-                    println!("executing while loop body");
-                }
                 for stmt in body {
-                    let result = interpret_node(stmt, env, is_verbose, true)?;
-                    match result {
+                    match interpret_node(stmt, env, is_verbose, true)? {
                         Value::Break => {
-                            if is_verbose {
-                                println!("break encountered, exiting while loop");
-                            }
-                            return Ok(Value::Null);
+                            break 'outer;
                         },
                         Value::Continue => {
-                            if is_verbose {
-                                println!("continue encountered, skipping to next iteration");
-                            }
-                            break;
+                            continue 'outer;
                         },
-                        _ => {}
+                        val => result = val,
                     }
                 }
             }
-            Ok(Value::Null)
+        
+            env.pop_scope();
+            Ok(result)
         },
         ASTNode::Var(name, expr, is_mutable) => {
             let value = if let Some(expr) = expr {
@@ -869,52 +874,35 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
             Ok(Value::Null)
         },
-                ASTNode::For(init, condition, update, body) => {
-            if is_verbose {
-                println!("initializing for loop");
-            }
+        ASTNode::For(init, condition, update, body) => {
+            env.push_scope(); // Create new scope for the loop
+            
             interpret_node(init, env, is_verbose, true)?;
             
-            loop {
-                if is_verbose {
-                    println!("checking for loop condition");
-                }
+            let mut result = Value::Null;
+            'outer: loop {
                 let cond_value = interpret_node(condition, env, is_verbose, true)?;
                 if let Value::Boolean(false) = cond_value {
-                    if is_verbose {
-                        println!("for loop condition false, exiting loop");
-                    }
                     break;
                 }
         
-                if is_verbose {
-                    println!("executing for loop body");
-                }
                 for stmt in body {
-                    let result = interpret_node(stmt, env, is_verbose, true)?;
-                    match result {
+                    match interpret_node(stmt, env, is_verbose, true)? {
                         Value::Break => {
-                            if is_verbose {
-                                println!("break encountered, exiting for loop");
-                            }
-                            return Ok(Value::Null);
+                            break 'outer;
                         },
                         Value::Continue => {
-                            if is_verbose {
-                                println!("continue encountered, skipping to next iteration");
-                            }
-                            break;
+                            continue 'outer;
                         },
-                        _ => {}
+                        val => result = val,
                     }
                 }
         
-                if is_verbose {
-                    println!("executing for loop update");
-                }
                 interpret_node(update, env, is_verbose, true)?;
             }
-            Ok(Value::Null)
+        
+            env.pop_scope();
+            Ok(result)
         },
         ASTNode::Break => {
             if !in_loop {
