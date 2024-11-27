@@ -12,6 +12,10 @@ sys-info = { version = "0.9", optional = true }
 default = []
 unix = ["sys-info"]
 
+[profile.release]
+lto = true
+overflow-checks = true
+
 [[bin]]
 name = "td"     
 path = "src/main.rs"  
