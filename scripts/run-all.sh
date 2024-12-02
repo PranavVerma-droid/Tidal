@@ -19,5 +19,5 @@ for file in ../../Examples/Normal/*.td; do
     fi
 
     echo "Processing file: $basename"
-    ../td "$file" -v
+    ../td "$file"
 done

@@ -211,19 +211,10 @@ impl Environment {
     
         let mut parser = Parser::new(&contents);
         let ast = parser.parse()?;
-        let mut lib = ExternalLibrary::new();
-    
-        for node in ast {
-            match node {
-                ASTNode::FunctionDecl(name, params, body) => {
-                    lib.add_function(name, params, body);
-                },
-                _ => return Err(Error::InterpreterError(
-                    "External libraries can only contain function declarations".to_string()
-                ))
-            }
-        }
-    
+        
+        let mut lib = ExternalLibrary::new(ast);
+        lib.initialize()?;
+
         self.libraries.insert(name.to_string(), Box::new(lib));
         Ok(())
     }
@@ -233,47 +224,80 @@ impl Environment {
 
 pub struct ExternalLibrary {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
+    variables: HashMap<String, (Value, bool)>,
+    ast: Vec<ASTNode>,
+    is_initialized: bool,
 }
 
 impl ExternalLibrary {
-    pub fn new() -> Self {
+    pub fn new(ast: Vec<ASTNode>) -> Self {
         ExternalLibrary {
-            functions: HashMap::new()
+            functions: HashMap::new(),
+            variables: HashMap::new(),
+            ast,
+            is_initialized: false,
         }
     }
 
-    pub fn add_function(&mut self, name: String, params: Vec<String>, body: Vec<ASTNode>) {
-        let func_name = name.clone();
-        let params = params.clone();
-        let body = body.clone();
-        
-        let function = Box::new(move |args: Vec<Value>| -> Result<Value, Error> {
-            let mut env = Environment::new();
-            env.in_function = true;
+    fn initialize(&mut self) -> Result<(), Error> {
+        if self.is_initialized {
+            return Ok(());
+        }
 
-            if args.len() != params.len() {
-                return Err(Error::InvalidFunctionArguments(
-                    func_name.to_string(),
-                    params.len(),
-                    args.len()
-                ));
-            }
+        let mut env = Environment::new();
+        env.in_function = false;
 
-            for (param, arg) in params.iter().zip(args) {
-                env.insert_var(param.clone(), arg, true);
-            }
+        for node in &self.ast {
+            match node {
+                ASTNode::FunctionDecl(name, params, body) => {
+                    let params = params.clone();
+                    let body = body.clone();
+                    let func_name = name.clone();
+                    
+                    let function = Box::new(move |args: Vec<Value>| -> Result<Value, Error> {
+                        let mut func_env = Environment::new();
+                        func_env.in_function = true;
 
-            let mut result = Value::Null;
-            for node in &body {
-                match interpret_node(node, &mut env, false, false)? {
-                    Value::ReturnValue(val) => return Ok(*val),
-                    val => result = val,
+                        if args.len() != params.len() {
+                            return Err(Error::InvalidFunctionArguments(
+                                func_name.clone(),
+                                params.len(),
+                                args.len()
+                            ));
+                        }
+
+                        for (param, arg) in params.iter().zip(args) {
+                            func_env.insert_var(param.clone(), arg, true);
+                        }
+
+                        let mut result = Value::Null;
+                        for node in &body {
+                            match interpret_node(node, &mut func_env, false, false)? {
+                                Value::ReturnValue(val) => return Ok(*val),
+                                val => result = val,
+                            }
+                        }
+                        Ok(result)
+                    });
+
+                    self.functions.insert(name.clone(), function);
+                }
+                ASTNode::Var(name, expr_opt, is_mutable) => {
+                    if let Some(expr) = expr_opt {
+                        if let Ok(value) = interpret_node(expr, &mut env, false, false) {
+                            self.variables.insert(name.clone(), (value, *is_mutable));
+                        }
+                    } else {
+                        self.variables.insert(name.clone(), (Value::Null, *is_mutable));
+                    }
+                }
+                _ => {
                 }
             }
-            Ok(result)
-        });
+        }
 
-        self.functions.insert(name, function);
+        self.is_initialized = true;
+        Ok(())
     }
 }
 
@@ -282,24 +306,18 @@ impl Library for ExternalLibrary {
         self.functions.get(name)
     }
 
-    fn get_constant(&self, _name: &str) -> Option<&Value> {
-        None
+    fn get_constant(&self, name: &str) -> Option<&Value> {
+        self.variables.get(name).map(|(val, _)| val)
+    }
+
+    fn is_mutable(&self, name: &str) -> Option<bool> {
+        self.variables.get(name).map(|(_, mutable)| *mutable)
     }
 
     fn box_clone(&self) -> Box<dyn Library> {
-        let mut new_lib = ExternalLibrary::new();
-        for (name, _) in self.functions.iter() {
-            let name_clone = name.clone();
-            new_lib.functions.insert(name.clone(), 
-                Box::new(move |args| {
-                    if let Some(func) = FUNCTION_CACHE.lock().unwrap().get(&name_clone) {
-                        func(args)
-                    } else {
-                        Err(Error::InterpreterError("Function not found in cache".to_string()))
-                    }
-                })
-            );
-        }
+        let mut new_lib = ExternalLibrary::new(self.ast.clone());
+        new_lib.variables = self.variables.clone();
+        new_lib.initialize().unwrap();
         Box::new(new_lib)
     }
 }

@@ -8,6 +8,8 @@ use std::collections::HashMap;
 pub struct StdLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
     constants: HashMap<String, Value>,
+    // Add mutability tracking
+    var_mutability: HashMap<String, bool>,
 }
 
 impl Library for StdLib {
@@ -19,9 +21,14 @@ impl Library for StdLib {
         self.constants.get(name)
     }
 
+    fn is_mutable(&self, name: &str) -> Option<bool> {
+        self.var_mutability.get(name).copied()
+    }
+
     fn box_clone(&self) -> Box<dyn Library> {
         let mut new_lib = StdLib::new();
         new_lib.constants = self.constants.clone();
+        new_lib.var_mutability = self.var_mutability.clone();
         Box::new(new_lib)
     }
 }
@@ -31,6 +38,7 @@ impl StdLib {
         let mut lib = StdLib {
             functions: HashMap::new(),
             constants: HashMap::new(),
+            var_mutability: HashMap::new(),
         };
         
         lib.register_functions();

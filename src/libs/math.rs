@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct MathLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
     constants: HashMap<String, Value>,
+    var_mutability: HashMap<String, bool>,
 }
 
 impl Library for MathLib {
@@ -22,6 +23,10 @@ impl Library for MathLib {
         new_lib.constants = self.constants.clone();
         Box::new(new_lib)
     }
+
+    fn is_mutable(&self, name: &str) -> Option<bool> {
+        self.var_mutability.get(name).copied()
+    }
 }
 
 impl MathLib {
@@ -29,6 +34,7 @@ impl MathLib {
         let mut lib = MathLib {
             functions: HashMap::new(),
             constants: HashMap::new(),
+            var_mutability: HashMap::new(),
         };
         
         lib.register_functions();

@@ -12,6 +12,7 @@ use sys_info;
 pub struct SysLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
     constants: HashMap<String, Value>,
+    var_mutability: HashMap<String, bool>,
 }
 
 impl Library for SysLib {
@@ -24,10 +25,13 @@ impl Library for SysLib {
     }
 
     fn box_clone(&self) -> Box<dyn Library> {
-        // Create a new instance which will recreate all functions
         let mut new_lib = SysLib::new();
         new_lib.constants = self.constants.clone();
         Box::new(new_lib)
+    }
+
+    fn is_mutable(&self, name: &str) -> Option<bool> {
+        self.var_mutability.get(name).copied()
     }
 }
 
@@ -36,6 +40,7 @@ impl SysLib {
         let mut lib = SysLib {
             functions: HashMap::new(),
             constants: HashMap::new(),
+            var_mutability: HashMap::new(),
         };
         lib.register_functions();
         lib.register_constants();

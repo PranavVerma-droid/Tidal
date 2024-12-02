@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 pub struct OSLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
     constants: HashMap<String, Value>,
+    var_mutability: HashMap<String, bool>,
 }
 
 impl Library for OSLib {
@@ -27,6 +28,10 @@ impl Library for OSLib {
         new_lib.constants = self.constants.clone();
         Box::new(new_lib)
     }
+
+    fn is_mutable(&self, name: &str) -> Option<bool> {
+        self.var_mutability.get(name).copied()
+    }
 }
 
 impl OSLib {
@@ -34,6 +39,7 @@ impl OSLib {
         let mut lib = OSLib {
             functions: HashMap::new(),
             constants: HashMap::new(),
+            var_mutability: HashMap::new(),
         };
         lib.register_functions();
         lib.register_constants();
