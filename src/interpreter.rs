@@ -75,6 +75,7 @@ impl Environment {
         env
     }
 
+    /* 
     fn new_with_parent(parent: Environment) -> Self {
         let mut env = Environment {
             scopes: vec![HashMap::new()],
@@ -85,6 +86,7 @@ impl Environment {
         };
         env
     }
+    */
 
     pub fn push_scope(&mut self) {
         self.scopes.push(HashMap::new());
@@ -122,46 +124,48 @@ impl Environment {
         self.functions.insert(name, value);
     }
 
-    pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
+    pub fn has_library(&self, name: &str) -> bool {
         if self.libraries.contains_key(name) {
-            return Ok(());
+            return true;
         }
-
-        if let Some(parent) = &mut self.parent {
-            if parent.libraries.contains_key(name) {
-                let lib = parent.libraries.get(name).unwrap();
-                self.libraries.insert(name.to_string(), lib.box_clone());
-                return Ok(());
-            }
+        if let Some(parent) = &self.parent {
+            return parent.has_library(name);
         }
+        false
+    }
 
+    pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
         if name == "std" {
             return Err(Error::InterpreterError(
                 "Standard library is already loaded in global scope".to_string()
             ));
         }
 
-        if self.libraries.contains_key(name) {
-            return Err(Error::InterpreterError("Library already imported".to_string()));
+        if self.has_library(name) {
+            return Err(Error::InterpreterError(format!("Library '{}' is already imported", name)));
         }
-    
+
         match mode {
             Some("embedded") => {
-                match name {
-                    "math" => {
-                        self.libraries.insert(name.to_string(), Box::new(MathLib::new()));
-                    }
-                    "sys" => {
-                        self.libraries.insert(name.to_string(), Box::new(SysLib::new()));
-                    }
-                    "os" => {
-                        self.libraries.insert(name.to_string(), Box::new(OSLib::new()));
-                    }
-                    _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
-                };
+                if !self.libraries.contains_key(name) {
+                    match name {
+                        "math" => {
+                            self.libraries.insert(name.to_string(), Box::new(MathLib::new()));
+                        }
+                        "sys" => {
+                            self.libraries.insert(name.to_string(), Box::new(SysLib::new()));
+                        }
+                        "os" => {
+                            self.libraries.insert(name.to_string(), Box::new(OSLib::new()));
+                        }
+                        _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
+                    };
+                }
             }
             Some("external") => {
-                self.load_external_library(name)?;
+                if !self.libraries.contains_key(name) {
+                    self.load_external_library(name)?;
+                }
             }
             Some(_) => {
                 return Err(Error::InterpreterError("Invalid import mode".to_string()));

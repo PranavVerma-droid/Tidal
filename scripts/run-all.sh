@@ -1,7 +1,7 @@
 #!/bin/bash
 
-
-for file in ../Examples/Normal/*.td; 
+for file in ../../Examples/Normal/*.td; 
 do
-    ./td "$file"
+    echo "Processing file: $(basename "$file")"
+    ../td "$file"
 done
