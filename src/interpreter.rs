@@ -1,5 +1,3 @@
-#[allow(unused_parens)]
-
 use crate::parser::{ASTNode, Value};
 use crate::lexer::Token;
 use crate::error::Error;
@@ -30,8 +28,9 @@ impl fmt::Display for Value {
             Value::Break => write!(f, "break"),
             Value::Continue => write!(f, "continue"),
             Value::Array(arr) => {
+                let guard = arr.lock().unwrap();
                 write!(f, "[")?;
-                for (i, value) in arr.iter().enumerate() {
+                for (i, value) in guard.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
                     write!(f, "{}", value)?;
                 }
@@ -39,6 +38,15 @@ impl fmt::Display for Value {
             },
             Value::Function(name, _, _) => write!(f, "<function {}>", name),
             Value::ReturnValue(val) => write!(f, "{}", *val),
+        }
+    }
+}
+
+impl Value {
+    fn shallow_clone(&self) -> Self {
+        match self {
+            Value::Array(arr) => Value::Array(Arc::clone(arr)),
+            _ => self.clone(),
         }
     }
 }
@@ -381,7 +389,10 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             let value = interpret_node(expr, env, is_verbose, in_loop)?;
             match value {
                 Value::String(s) => Ok(Value::Number(s.chars().count() as i32)),
-                Value::Array(arr) => Ok(Value::Number(arr.len() as i32)),
+                Value::Array(arr) => {
+                    let guard = arr.lock().unwrap();
+                    Ok(Value::Number(guard.len() as i32))
+                },
                 _ => Err(Error::TypeError(format!("Cannot get length of {}", type_str_of_value(&value))))
             }
         },
@@ -581,7 +592,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 .iter()
                 .map(|elem| interpret_node(elem, env, is_verbose, in_loop))
                 .collect::<Result<_, _>>()?;
-            Ok(Value::Array(values))
+            Ok(Value::Array(Arc::new(Mutex::new(values))))
         },
         ASTNode::Index(expr, index) => {
             let array = interpret_node(expr, env, is_verbose, in_loop)?;
@@ -589,10 +600,11 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
 
             match (array, index) {
                 (Value::Array(arr), Value::Number(i)) => {
-                    if i < 0 || i >= arr.len() as i32 {
+                    let guard = arr.lock().unwrap();
+                    if i < 0 || i >= guard.len() as i32 {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds")));
                     }
-                    Ok(arr[i as usize].clone())
+                    Ok(guard[i as usize].clone())
                 },
                 (Value::String(s), Value::Number(i)) => {
                     if i < 0 || i >= s.len() as i32 {
@@ -604,94 +616,86 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::FunctionCall(name, args) => {
-                let mut evaluated_args = Vec::new();
-                for arg in args {
-                    evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
-                }
-            
-                if let Some(dot_pos) = name.find('.') {
-                    let lib_name = &name[..dot_pos];
-                    let func_name = &name[dot_pos + 1..];
-
-                    if let Some(lib) = env.libraries.get(lib_name) {
+            let mut evaluated_args = Vec::new();
+            for arg in args {
+                evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
+            }
+        
+            if let Some(Value::Function(full_name, _, _)) = env.functions.get(name) {
+                if full_name.starts_with("std.") {
+                    let func_name = &full_name[4..]; // skip std
+                    if let Some(lib) = env.libraries.get("std") {
                         if let Some(func) = lib.get_function(func_name) {
                             let result = func(evaluated_args)?;
-                            
-                            if lib_name == "std" {
-                                match func_name {
-                                    "insert" | "sort" | "reverse" | "clear" => {
-                                        if let Some(array_name) = get_array_name(&args[0]) {
-                                            if let Some((current_value, is_mutable)) = env.get_mut(&array_name) {
-                                                if *is_mutable {
-                                                    if let Value::Array(_) = &result {
-                                                        *current_value = result.clone();
-                                                    }
-                                                    return Ok(Value::Null);
-                                                } else {
-                                                    return Err(Error::TypeError(
-                                                        format!("Cannot modify immutable array '{}'", array_name)
-                                                    ));
+
+                            match func_name {
+                                "insert" | "sort" | "reverse" | "clear" => {
+                                    if let Some(array_name) = get_array_name(&args[0]) {
+                                        if let Some((current_value, is_mutable)) = env.get_mut(&array_name) {
+                                            if *is_mutable {
+                                                if let Value::Array(_) = &result {
+                                                    *current_value = result.clone();
                                                 }
+                                                return Ok(Value::Null);
+                                            } else {
+                                                return Err(Error::TypeError(
+                                                    format!("Cannot modify immutable array '{}'", array_name)
+                                                ));
                                             }
                                         }
-                                    },
-                                    _ => {}
-                                }
+                                    }
+                                },
+                                _ => {}
                             }
                             return Ok(result);
                         }
-                        return Err(Error::VariableNotDeclared(
-                            format!("Function '{}' not found in library '{}'", func_name, lib_name)
-                        ));
                     }
-                    return Err(Error::VariableNotDeclared(
-                        format!("Library '{}' not found", lib_name)
-                    ));
                 }
-            
-                match env.functions.get(name).cloned() {
-                    Some(Value::Function(_, params, body)) => {
-                        let mut func_env = Environment::new();
-                        func_env.in_function = true;
+            }
 
-                        func_env.parent = Some(Box::new(Environment {
-                            scopes: vec![HashMap::new()],
-                            functions: env.functions.clone(),
-                            in_function: true,
-                            libraries: HashMap::new(), 
-                            parent: None,
-                        }));
+            match env.functions.get(name).cloned() {
+                Some(Value::Function(_, params, body)) => {
+                    let mut func_env = Environment::new();
+                    func_env.in_function = true;
 
-                        for (name, lib) in &env.libraries {
-                            func_env.libraries.insert(name.clone(), lib.box_clone());
-                        }
+                    func_env.parent = Some(Box::new(Environment {
+                        scopes: vec![HashMap::new()],
+                        functions: env.functions.clone(),
+                        in_function: true,
+                        libraries: HashMap::new(), 
+                        parent: None,
+                    }));
 
-                        if params.len() != evaluated_args.len() {
-                            return Err(Error::TypeError(format!(
-                                "Function '{}' expects {} arguments but got {}", 
-                                name, params.len(), evaluated_args.len()
-                            )));
-                        }
-            
-                        for (param, arg) in params.iter().zip(evaluated_args) {
-                            func_env.insert_var(param.clone(), arg, true);
-                        }
-            
-                        let mut result = Value::Null;
-                        for stmt in body {
-                            match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
-                                Value::ReturnValue(val) => return Ok(*val),
-                                val => result = val,
-                            }
-                        }
-                        Ok(result)
+                    for (name, lib) in &env.libraries {
+                        func_env.libraries.insert(name.clone(), lib.box_clone());
                     }
-                    _ => Err(Error::InterpreterError(format!(
-                        "Function '{}' must be called with library prefix (e.g. std.{})", 
-                        name, name
-                    )))
+
+                    if params.len() != evaluated_args.len() {
+                        return Err(Error::TypeError(format!(
+                            "Function '{}' expects {} arguments but got {}", 
+                            name, params.len(), evaluated_args.len()
+                        )));
+                    }
+        
+                    for (param, arg) in params.iter().zip(evaluated_args) {
+                        func_env.insert_var(param.clone(), arg, true);
+                    }
+        
+                    let mut result = Value::Null;
+                    for stmt in body {
+                        match interpret_node(&stmt, &mut func_env, is_verbose, in_loop)? {
+                            Value::ReturnValue(val) => return Ok(*val),
+                            val => result = val,
+                        }
+                    }
+                    Ok(result)
                 }
-            },
+                _ => Err(Error::InterpreterError(format!(
+                    "Function '{}' must be called with library prefix (e.g. std.{})", 
+                    name, name
+                )))
+            }
+        },
         ASTNode::Return(expr) => {
             if !env.in_function {
                 return Err(Error::SyntaxError("'return' outside function".to_string()));
@@ -748,45 +752,45 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             Ok(result)
         },
         ASTNode::Var(name, expr, is_mutable) => {
-            let value = if let Some(expr) = expr {
-                interpret_node(expr, env, is_verbose, in_loop)?
+            if *is_mutable {
+                if let Some(expr) = expr {
+                    let val = interpret_node(expr, env, is_verbose, in_loop)?;
+                    if matches!(val, Value::Array(_)) {
+                        check_array_mutability(expr, env, name)?;
+                    }
+                    env.insert_var(name.clone(), val.shallow_clone(), *is_mutable);
+                } else {
+                    env.insert_var(name.clone(), Value::Null, *is_mutable);
+                }
             } else {
-                Value::Null
-            };
-            env.insert_var(name.clone(), value.clone(), *is_mutable);
-            if is_verbose {
-                println!("declare variable {} with {:?}", name, value);
+                if let Some(expr) = expr {
+                    let val = interpret_node(expr, env, is_verbose, in_loop)?;
+                    env.insert_var(name.clone(), val.shallow_clone(), *is_mutable);
+                } else {
+                    env.insert_var(name.clone(), Value::Null, *is_mutable);
+                }
             }
             Ok(Value::Null)
         },
         ASTNode::Assign(name, expr) => {
-            let value = interpret_node(expr, env, is_verbose, in_loop)?;
-            
-            if let Some((current_value, is_mutable)) = env.get_mut(name) {
-                if !*is_mutable {
+            if let Some((_, is_mutable)) = env.get(name) {
+                if !is_mutable {
                     return Err(Error::TypeError(format!("Cannot assign to immutable variable: {}", name)));
                 }
-        
 
-                match &value {
-                    Value::Array(_) => {
-                        if !*is_mutable {
-                            return Err(Error::TypeError("Cannot modify immutable array".to_string()));
-                        }
-                    },
-                    _ => {}
+                let value = interpret_node(expr, env, is_verbose, in_loop)?;
+                if matches!(value, Value::Array(_)) {
+                    check_array_mutability(expr, env, name)?;
                 }
 
-                *current_value = value.clone();
-                
-                if is_verbose {
-                    println!("assign {} = {:?}", name, value);
+                if let Some((current_value, _)) = env.get_mut(name) {
+                    *current_value = value.shallow_clone();
                 }
             } else {
                 return Err(Error::VariableNotDeclared(format!("Variable not declared: {}", name)));
             }
             Ok(Value::Null)
-        }
+        },
         ASTNode::IndexAssign(array, index, value) => {
             let array_name = if let ASTNode::Identifier(name) = &**array {
                 name
@@ -798,14 +802,15 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             let value = interpret_node(value, env, is_verbose, in_loop)?;
 
             if let Value::Number(index) = index_value {
-                if let Some((Value::Array(ref mut arr), is_mutable)) = env.get_mut(array_name) {
+                if let Some((Value::Array(arr), is_mutable)) = env.get_mut(array_name) {
                     if !*is_mutable {
                         return Err(Error::TypeError(format!("Cannot assign to immutable array '{}'", array_name)));
                     }
-                    if index as usize >= arr.len() {
+                    let mut guard = arr.lock().unwrap();
+                    if index as usize >= guard.len() {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds for array '{}'", array_name)));
                     }
-                    arr[index as usize] = value;
+                    guard[index as usize] = value;
                 } else {
                     return Err(Error::TypeError(format!("Array '{}' not found or is not mutable", array_name)));
                 }
@@ -978,4 +983,24 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             Ok(Value::Continue)
         },
     }
+}
+
+fn get_source_var_mutability(expr: &ASTNode, env: &Environment) -> Option<(String, bool)> {
+    if let ASTNode::Identifier(name) = expr {
+        if let Some((_, mutable)) = env.get(name) {
+            return Some((name.clone(), *mutable));
+        }
+    }
+    None
+}
+
+fn check_array_mutability(expr: &ASTNode, env: &Environment, target_name: &str) -> Result<(), Error> {
+    if let Some((_, src_mutable)) = get_source_var_mutability(expr, env) {
+        if !src_mutable {
+            return Err(Error::TypeError(
+                format!("Cannot assign immutable array to mutable variable '{}'", target_name)
+            ));
+        }
+    }
+    Ok(())
 }

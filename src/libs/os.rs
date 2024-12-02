@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::env;
+use std::sync::{Arc, Mutex};
 
 pub struct OSLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
@@ -156,7 +157,7 @@ impl OSLib {
                 })
                 .collect();
 
-            Ok(Value::Array(files))
+            Ok(Value::Array(Arc::new(Mutex::new(files))))
         }));
 
         self.functions.insert("chdir".to_string(), Box::new(|args| {

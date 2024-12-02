@@ -4,6 +4,7 @@ use crate::parser::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 #[cfg(target_family = "unix")]
 use sys_info;
@@ -54,7 +55,7 @@ impl SysLib {
         let args: Vec<Value> = env::args()
             .map(|arg| Value::String(arg))
             .collect();
-        self.constants.insert("ARGV".to_string(), Value::Array(args));
+        self.constants.insert("ARGV".to_string(), Value::Array(Arc::new(Mutex::new(args))));
 
         // Executable path
         if let Ok(exe_path) = env::current_exe() {
@@ -89,7 +90,7 @@ impl SysLib {
             let path_array: Vec<Value> = path.split(':')
                 .map(|s| Value::String(s.to_string()))
                 .collect();
-            self.constants.insert("PATH".to_string(), Value::Array(path_array));
+            self.constants.insert("PATH".to_string(), Value::Array(Arc::new(Mutex::new(path_array))));
         }
     }
 
@@ -223,11 +224,11 @@ impl SysLib {
             {
                 match sys_info::loadavg() {
                     Ok(loads) => {
-                        return Ok(Value::Array(vec![
+                        return Ok(Value::Array(Arc::new(Mutex::new(vec![
                             Value::Float(loads.one),
                             Value::Float(loads.five),
                             Value::Float(loads.fifteen),
-                        ]));
+                        ]))));
                     }
                     Err(_) => return Ok(Value::Null)
                 }
@@ -245,8 +246,11 @@ impl SysLib {
                 return Err(Error::TypeError("getsizeof() takes exactly 1 argument".to_string()));
             }
             match &args[0] {
+                Value::Array(arr) => {
+                    let guard = arr.lock().unwrap();
+                    Ok(Value::Number(guard.len() as i32))
+                },
                 Value::String(s) => Ok(Value::Number(s.len() as i32)),
-                Value::Array(arr) => Ok(Value::Number(arr.len() as i32)),
                 _ => Ok(Value::Number(std::mem::size_of::<Value>() as i32))
             }
         }));

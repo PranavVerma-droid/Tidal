@@ -1,6 +1,7 @@
 use crate::lexer::{Lexer, Token};
 use crate::error::Error;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -12,7 +13,7 @@ pub enum Value {
     Type(String),
     Break,
     Continue,
-    Array(Vec<Value>),
+    Array(Arc<Mutex<Vec<Value>>>), // Change array storage to use Arc<Mutex<>>
     Function(String, Vec<String>, Vec<ASTNode>),  
     ReturnValue(Box<Value>),
 }
@@ -39,7 +40,11 @@ impl PartialEq for Value {
             (Value::Type(a), Value::Type(b)) => a == b,
             (Value::Break, Value::Break) => true,
             (Value::Continue, Value::Continue) => true,
-            (Value::Array(a), Value::Array(b)) => a == b,
+            (Value::Array(a), Value::Array(b)) => {
+                let a_guard = a.lock().unwrap();
+                let b_guard = b.lock().unwrap();
+                *a_guard == *b_guard
+            },
             _ => false
         }
     }
