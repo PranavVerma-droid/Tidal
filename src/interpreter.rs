@@ -252,10 +252,11 @@ impl ExternalLibrary {
             env.in_function = true;
 
             if args.len() != params.len() {
-                return Err(Error::TypeError(format!(
-                    "Function '{}' expects {} arguments but got {}", 
-                    func_name, params.len(), args.len()
-                )));
+                return Err(Error::InvalidFunctionArguments(
+                    func_name.to_string(),
+                    params.len(),
+                    args.len()
+                ));
             }
 
             for (param, arg) in params.iter().zip(args) {
@@ -339,16 +340,23 @@ pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Result<Option<Value>, E
 }
 
 fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_loop: bool) -> Result<Value, Error> {
-    match node {
+    if is_verbose {
+        println!("\x1b[90m[DEBUG] Interpreting node: {:?}\x1b[0m", node);
+    }
+
+    let result = match node {
         ASTNode::Number(val) => Ok(Value::Number(*val)),
         ASTNode::String(val) => Ok(Value::String(val.clone())),
         ASTNode::Float(val) => Ok(Value::Float(*val)),
         ASTNode::Boolean(val) => Ok(Value::Boolean(*val)),
         ASTNode::Null => Ok(Value::Null),
         ASTNode::Import(name, mode) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Importing library '{}' with mode {:?}\x1b[0m", name, mode);
+            }
             env.import_library(name, mode.as_deref())?;
             Ok(Value::Null)
-        }
+        },
         ASTNode::LibraryAccess(lib_name, item_name) => {
             if let Some(lib) = env.libraries.get(lib_name) {
                 if let Some(constant) = lib.get_constant(item_name) {
@@ -393,7 +401,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     let guard = arr.lock().unwrap();
                     Ok(Value::Number(guard.len() as i32))
                 },
-                _ => Err(Error::TypeError(format!("Cannot get length of {}", type_str_of_value(&value))))
+                _ => Err(Error::CannotGetLength(type_str_of_value(&value).to_string(), value))
             }
         },
         ASTNode::DelCall(expr) => {
@@ -406,7 +414,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 }
                 Ok(Value::Null)
             } else {
-                Err(Error::TypeError("del() requires a variable name".to_string()))
+                Err(Error::DelRequiresVariableName)
             }
         },
         ASTNode::Input(prompt) => {
@@ -430,6 +438,9 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             Ok(Value::String(trimmed_input))
         },
         ASTNode::FunctionDecl(name, params, body) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Declaring function '{}' with parameters {:?}\x1b[0m", name, params);
+            }
             env.insert_function(
                 name.clone(),
                 Value::Function(name.clone(), params.clone(), body.clone())
@@ -616,9 +627,16 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::FunctionCall(name, args) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Calling function '{}' with {} arguments\x1b[0m", name, args.len());
+            }
             let mut evaluated_args = Vec::new();
-            for arg in args {
-                evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
+            for (i, arg) in args.iter().enumerate() {
+                let arg_value = interpret_node(arg, env, is_verbose, in_loop)?;
+                if is_verbose {
+                    println!("\x1b[90m[DEBUG] Argument {}: {:?}\x1b[0m", i, arg_value);
+                }
+                evaluated_args.push(arg_value);
             }
         
             if let Some(Value::Function(full_name, _, _)) = env.functions.get(name) {
@@ -671,10 +689,11 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     }
 
                     if params.len() != evaluated_args.len() {
-                        return Err(Error::TypeError(format!(
-                            "Function '{}' expects {} arguments but got {}", 
-                            name, params.len(), evaluated_args.len()
-                        )));
+                        return Err(Error::InvalidFunctionArguments(
+                            name.to_string(),
+                            params.len(),
+                            evaluated_args.len()
+                        ));
                     }
         
                     for (param, arg) in params.iter().zip(evaluated_args) {
@@ -698,7 +717,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::Return(expr) => {
             if !env.in_function {
-                return Err(Error::SyntaxError("'return' outside function".to_string()));
+                return Err(Error::ReturnOutsideFunction);
             }
             
             let value = if let Some(expr) = expr {
@@ -726,6 +745,9 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::While(condition, body) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Entering while loop\x1b[0m");
+            }
             env.push_scope();
             
             let mut result = Value::Null;
@@ -749,12 +771,21 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             } 
         
             env.pop_scope();
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Exiting while loop\x1b[0m");
+            }
             Ok(result)
         },
         ASTNode::Var(name, expr, is_mutable) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Variable declaration: {} (mutable: {})\x1b[0m", name, is_mutable);
+            }
             if *is_mutable {
                 if let Some(expr) = expr {
                     let val = interpret_node(expr, env, is_verbose, in_loop)?;
+                    if is_verbose {
+                        println!("\x1b[90m[DEBUG] Variable '{}' initialized with value: {:?}\x1b[0m", name, val);
+                    }
                     if matches!(val, Value::Array(_)) {
                         check_array_mutability(expr, env, name)?;
                     }
@@ -898,6 +929,10 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
         },
         ASTNode::If(condition, if_block, elif_blocks, else_block) => {
+            if is_verbose {
+                println!("\x1b[90m[DEBUG] Evaluating if statement with {} elif blocks and else={}\x1b[0m", 
+                    elif_blocks.len(), else_block.is_some());
+            }
             let condition_value = interpret_node(condition, env, is_verbose, in_loop)?;
             if let Value::Boolean(true) = condition_value {
                 for stmt in if_block {
@@ -982,7 +1017,15 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             }
             Ok(Value::Continue)
         },
+    };
+
+    if is_verbose {
+        if let Ok(ref val) = result {
+            println!("\x1b[90m[DEBUG] Node evaluation result: {:?}\x1b[0m", val);
+        }
     }
+
+    result
 }
 
 fn get_source_var_mutability(expr: &ASTNode, env: &Environment) -> Option<(String, bool)> {

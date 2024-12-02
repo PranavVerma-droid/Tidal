@@ -1,4 +1,5 @@
 use std::fmt;
+use crate::parser::Value;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -17,6 +18,16 @@ pub enum Error {
     ParserError(String),
     InterpreterError(String),
     UnknownError(String),
+    CannotGetLength(String, Value),
+    DelRequiresVariableName,
+    FunctionCallError(String),
+    InvalidArrayIdentifier,
+    InvalidFunctionArguments(String, usize, usize),
+    InvalidIndex,
+    LibraryError(String),
+    ReturnOutsideFunction,
+    UnexpectedValue(String),
+    UnsupportedUnaryOperation,
 }
 
 impl fmt::Display for Error {
@@ -36,6 +47,17 @@ impl fmt::Display for Error {
             Error::ParserError(msg) => write!(f, "ParserError: {}", msg),
             Error::InterpreterError(msg) => write!(f, "InterpreterError: {}", msg),
             Error::UnknownError(msg) => write!(f, "UnknownError: {}", msg),
+            Error::CannotGetLength(type_name, value) => write!(f, "Cannot get length of {} value: {}", type_name, value),
+            Error::DelRequiresVariableName => write!(f, "del() requires a variable name"),
+            Error::FunctionCallError(msg) => write!(f, "Function call error: {}", msg),
+            Error::InvalidArrayIdentifier => write!(f, "Expected array identifier in index assignment"),
+            Error::InvalidFunctionArguments(name, expected, got) => 
+                write!(f, "Function '{}' expects {} arguments but got {}", name, expected, got),
+            Error::InvalidIndex => write!(f, "Expected integer index in array assignment"),
+            Error::LibraryError(msg) => write!(f, "Library error: {}", msg),
+            Error::ReturnOutsideFunction => write!(f, "'return' outside function"),
+            Error::UnexpectedValue(msg) => write!(f, "Unexpected value: {}", msg),
+            Error::UnsupportedUnaryOperation => write!(f, "Unsupported unary operation"),
         }
     }
 }
