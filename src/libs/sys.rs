@@ -21,6 +21,13 @@ impl Library for SysLib {
     fn get_constant(&self, name: &str) -> Option<&Value> {
         self.constants.get(name)
     }
+
+    fn box_clone(&self) -> Box<dyn Library> {
+        // Create a new instance which will recreate all functions
+        let mut new_lib = SysLib::new();
+        new_lib.constants = self.constants.clone();
+        Box::new(new_lib)
+    }
 }
 
 impl SysLib {
@@ -237,7 +244,6 @@ impl SysLib {
             if args.len() != 1 {
                 return Err(Error::TypeError("getsizeof() takes exactly 1 argument".to_string()));
             }
-            // This is an approximation since we can't get exact sizes like Python
             match &args[0] {
                 Value::String(s) => Ok(Value::Number(s.len() as i32)),
                 Value::Array(arr) => Ok(Value::Number(arr.len() as i32)),

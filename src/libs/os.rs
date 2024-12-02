@@ -20,6 +20,12 @@ impl Library for OSLib {
     fn get_constant(&self, name: &str) -> Option<&Value> {
         self.constants.get(name)
     }
+
+    fn box_clone(&self) -> Box<dyn Library> {
+        let mut new_lib = OSLib::new();
+        new_lib.constants = self.constants.clone();
+        Box::new(new_lib)
+    }
 }
 
 impl OSLib {

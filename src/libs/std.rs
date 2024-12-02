@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use super::Library;
 use crate::error::Error;
 use crate::parser::Value;
@@ -15,6 +16,12 @@ impl Library for StdLib {
 
     fn get_constant(&self, name: &str) -> Option<&Value> {
         self.constants.get(name)
+    }
+
+    fn box_clone(&self) -> Box<dyn Library> {
+        let mut new_lib = StdLib::new();
+        new_lib.constants = self.constants.clone();
+        Box::new(new_lib)
     }
 }
 
@@ -119,7 +126,6 @@ impl StdLib {
                 }
             }));
         
-            // Array operations that return values
             self.functions.insert("copy".to_string(), Box::new(|args| {
                 if args.len() != 1 {
                     return Err(Error::TypeError("copy() takes exactly 1 argument".to_string()));

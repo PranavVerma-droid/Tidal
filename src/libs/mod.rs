@@ -9,4 +9,5 @@ use crate::parser::Value;
 pub trait Library {
     fn get_function(&self, name: &str) -> Option<&Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>;
     fn get_constant(&self, name: &str) -> Option<&Value>;
+    fn box_clone(&self) -> Box<dyn Library>;
 }

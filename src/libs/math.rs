@@ -16,6 +16,12 @@ impl Library for MathLib {
     fn get_constant(&self, name: &str) -> Option<&Value> {
         self.constants.get(name)
     }
+
+    fn box_clone(&self) -> Box<dyn Library> {
+        let mut new_lib = MathLib::new();
+        new_lib.constants = self.constants.clone();
+        Box::new(new_lib)
+    }
 }
 
 impl MathLib {

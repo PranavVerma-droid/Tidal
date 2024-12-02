@@ -1,3 +1,5 @@
+#[allow(unused_parens)]
+
 use crate::parser::{ASTNode, Value};
 use crate::lexer::Token;
 use crate::error::Error;
@@ -46,6 +48,7 @@ pub struct Environment {
     functions: HashMap<String, Value>,
     in_function: bool,
     libraries: HashMap<String, Box<dyn Library>>,
+    parent: Option<Box<Environment>>,
 }
 
 
@@ -56,10 +59,11 @@ impl Environment {
             functions: HashMap::new(),
             in_function: false,
             libraries: HashMap::new(),
+            parent: None,
         };
 
         let std_lib = StdLib::new();
-        for (name, func) in std_lib.get_function_map().iter() {
+        for (name,_func) in std_lib.get_function_map().iter() {
             env.functions.insert(name.clone(), Value::Function(
                 format!("std.{}", name), 
                 vec![],
@@ -68,6 +72,17 @@ impl Environment {
         }
 
         env.libraries.insert("std".to_string(), Box::new(StdLib::new()));
+        env
+    }
+
+    fn new_with_parent(parent: Environment) -> Self {
+        let mut env = Environment {
+            scopes: vec![HashMap::new()],
+            functions: HashMap::new(),
+            in_function: false,
+            libraries: HashMap::new(),
+            parent: Some(Box::new(parent)),
+        };
         env
     }
 
@@ -108,6 +123,18 @@ impl Environment {
     }
 
     pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
+        if self.libraries.contains_key(name) {
+            return Ok(());
+        }
+
+        if let Some(parent) = &mut self.parent {
+            if parent.libraries.contains_key(name) {
+                let lib = parent.libraries.get(name).unwrap();
+                self.libraries.insert(name.to_string(), lib.box_clone());
+                return Ok(());
+            }
+        }
+
         if name == "std" {
             return Err(Error::InterpreterError(
                 "Standard library is already loaded in global scope".to_string()
@@ -244,6 +271,23 @@ impl Library for ExternalLibrary {
 
     fn get_constant(&self, _name: &str) -> Option<&Value> {
         None
+    }
+
+    fn box_clone(&self) -> Box<dyn Library> {
+        let mut new_lib = ExternalLibrary::new();
+        for (name, _) in self.functions.iter() {
+            let name_clone = name.clone();
+            new_lib.functions.insert(name.clone(), 
+                Box::new(move |args| {
+                    if let Some(func) = FUNCTION_CACHE.lock().unwrap().get(&name_clone) {
+                        func(args)
+                    } else {
+                        Err(Error::InterpreterError("Function not found in cache".to_string()))
+                    }
+                })
+            );
+        }
+        Box::new(new_lib)
     }
 }
 
@@ -449,10 +493,10 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                                 Token::Equal => Ok(Value::Boolean(l == r)),
                                 Token::Modulus => Ok(Value::Float(l % r)),
                                 Token::NotEqual => Ok(Value::Boolean(l != r)),
-                                Token::FloorDivide => Ok(Value::Number((l / r).floor() as i32)),
                                 Token::Greater => Ok(Value::Boolean(l > r)),
                                 Token::Less => Ok(Value::Boolean(l < r)),
                                 Token::GreaterEqual => Ok(Value::Boolean(l >= r)),
+                                Token::FloorDivide => Ok(Value::Number((l / r).floor() as i32)),
                                 Token::Power => Ok(Value::Float(l.powf(r))),
                                 Token::LessEqual => Ok(Value::Boolean(l <= r)),
                                 _ => Err(Error::UnsupportedOperation(format!("Unsupported operator for mixed number and float"))),
@@ -561,18 +605,14 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     evaluated_args.push(interpret_node(arg, env, is_verbose, in_loop)?);
                 }
             
-                // Check if this is a library function call (contains dot)
                 if let Some(dot_pos) = name.find('.') {
                     let lib_name = &name[..dot_pos];
                     let func_name = &name[dot_pos + 1..];
-            
-                    // Get the library
+
                     if let Some(lib) = env.libraries.get(lib_name) {
-                        // Get the function from library
                         if let Some(func) = lib.get_function(func_name) {
                             let result = func(evaluated_args)?;
                             
-                            // Special handling for std library array modification functions
                             if lib_name == "std" {
                                 match func_name {
                                     "insert" | "sort" | "reverse" | "clear" => {
@@ -605,12 +645,23 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                     ));
                 }
             
-                // Handle non-library function calls
                 match env.functions.get(name).cloned() {
                     Some(Value::Function(_, params, body)) => {
                         let mut func_env = Environment::new();
                         func_env.in_function = true;
-            
+
+                        func_env.parent = Some(Box::new(Environment {
+                            scopes: vec![HashMap::new()],
+                            functions: env.functions.clone(),
+                            in_function: true,
+                            libraries: HashMap::new(), 
+                            parent: None,
+                        }));
+
+                        for (name, lib) in &env.libraries {
+                            func_env.libraries.insert(name.clone(), lib.box_clone());
+                        }
+
                         if params.len() != evaluated_args.len() {
                             return Err(Error::TypeError(format!(
                                 "Function '{}' expects {} arguments but got {}", 
@@ -687,7 +738,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                         val => result = val,
                     }
                 }
-            }
+            } 
         
             env.pop_scope();
             Ok(result)
@@ -772,7 +823,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
         },
         ASTNode::Type(expr) => {
             let value = interpret_node(expr, env, is_verbose, in_loop)?;
-            let type_str = match &value {  // Note: match on reference to value
+            let type_str = match &value {
                 Value::Number(_) => "int",
                 Value::String(_) => "str",
                 Value::Boolean(_) => "bool",
@@ -875,7 +926,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             Ok(Value::Null)
         },
         ASTNode::For(init, condition, update, body) => {
-            env.push_scope(); // Create new scope for the loop
+            env.push_scope();
             
             interpret_node(init, env, is_verbose, true)?;
             
