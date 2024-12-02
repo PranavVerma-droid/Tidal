@@ -59,9 +59,9 @@ impl Environment {
         };
 
         let std_lib = StdLib::new();
-        for (name, _func) in std_lib.get_function_map().iter() {
+        for (name, func) in std_lib.get_function_map().iter() {
             env.functions.insert(name.clone(), Value::Function(
-                name.clone(),
+                format!("std.{}", name), 
                 vec![],
                 vec![]
             ));
@@ -108,10 +108,13 @@ impl Environment {
     }
 
     pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
+        if name == "std" {
+            return Err(Error::InterpreterError(
+                "Standard library is already loaded in global scope".to_string()
+            ));
+        }
+
         if self.libraries.contains_key(name) {
-            if name == "std" {
-                return Ok(());
-            }
             return Err(Error::InterpreterError("Library already imported".to_string()));
         }
     
@@ -122,10 +125,7 @@ impl Environment {
                         self.libraries.insert(name.to_string(), Box::new(MathLib::new()));
                     }
                     "sys" => {
-                    self.libraries.insert(name.to_string(), Box::new(SysLib::new()));
-                    }   
-                    "std" => {
-                        self.libraries.insert(name.to_string(), Box::new(StdLib::new()));
+                        self.libraries.insert(name.to_string(), Box::new(SysLib::new()));
                     }
                     "os" => {
                         self.libraries.insert(name.to_string(), Box::new(OSLib::new()));

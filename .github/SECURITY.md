@@ -2,18 +2,11 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
 | Version | Supported          |
 | ------- | ------------------ |
-| > 1.5   | :white_check_mark: |
-| < 1.5   | :x:                |
+| > 1.7   | :white_check_mark: |
+| < 1.7   | :x:                |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Please Report the Vunerability Either in the [Issues](https://github.com/Tidal-Lang/Tidal/issues) or, if the vunerability is critical, Drop me a Email: [pranav@verma.net.in](mailto:pranav@verma.net.in).
