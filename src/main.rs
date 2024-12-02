@@ -89,12 +89,12 @@ fn preprocess_skibidi(input: &str) -> String {
     let replacements: HashMap<&str, &str> = [
         ("rizzler", "var"),
         ("sigma", "novar"),
-        /* ("be", "="), */
+        ("be", "="),
         ("no cap", ";"),
         ("skibidi", "print"),
         ("fanum tax", "type"),
         ("bussin", "for"),
-        ("yeet", "while"),
+        ("yeet", "return"),
         ("sussy", "/*"),
         ("baka", "*/"),
         ("aura +69420", "break"),
@@ -105,54 +105,58 @@ fn preprocess_skibidi(input: &str) -> String {
         ("gyatt", "true"),
         ("diddy", "false"),
         ("big yikes", "func"),
-        ("spill", "return"),
+        ("spill", "while"),
         ("goat", "input"),
         ("boogey", "import"),
     ].iter().cloned().collect();
 
     let mut result = String::new();
-    let mut buffer = String::new();
+    let mut in_word = false;
+    let mut word_buffer = String::new();
 
-    let chars: Vec<char> = input.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        let mut matched = false;
-
-        for (&key, &value) in &replacements {
-            if chars[i..].starts_with(&key.chars().collect::<Vec<_>>()) {
-                result.push_str(value);
-                i += key.len();
-                matched = true;
-                break;
+    for c in input.chars() {
+        if c.is_whitespace() {
+            if in_word {
+                if let Some(&replacement) = replacements.get(word_buffer.trim()) {
+                    result.push_str(replacement);
+                } else {
+                    result.push_str(&word_buffer);
+                }
+                word_buffer.clear();
+                in_word = false;
             }
-        }
-
-        if !matched {
-            if chars[i].is_alphabetic() || chars[i].is_whitespace() {
-                buffer.push(chars[i]);
-            } else {
-                if !buffer.is_empty() {
-                    let trimmed = buffer.trim();
-                    if let Some(&replacement) = replacements.get(trimmed) {
+            result.push(' ');
+        } else {
+            if "=(),[]{}".contains(c) {
+                if in_word {
+                    if let Some(&replacement) = replacements.get(word_buffer.trim()) {
                         result.push_str(replacement);
                     } else {
-                        result.push_str(&buffer);
+                        result.push_str(&word_buffer);
                     }
-                    buffer.clear();
+                    word_buffer.clear();
+                    in_word = false;
                 }
-                result.push(chars[i]);
+                result.push(c);
+                continue;
             }
-            i += 1;
+
+            word_buffer.push(c);
+            in_word = true;
         }
     }
 
-    if !buffer.is_empty() {
-        let trimmed = buffer.trim();
-        if let Some(&replacement) = replacements.get(trimmed) {
+    if in_word {
+        if let Some(&replacement) = replacements.get(word_buffer.trim()) {
             result.push_str(replacement);
         } else {
-            result.push_str(&buffer);
+            result.push_str(&word_buffer);
+        }
+    }
+
+    for (&pattern, &replacement) in &replacements {
+        if pattern.contains(' ') {
+            result = result.replace(pattern, replacement);
         }
     }
 
