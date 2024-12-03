@@ -360,7 +360,15 @@ pub fn interpret(ast: Vec<ASTNode>, is_verbose: bool) -> Result<Option<Value>, E
     let mut result = None;
 
     for node in ast {
-        result = Some(interpret_node(&node, &mut env, is_verbose, false)?);
+        let value = interpret_node(&node, &mut env, is_verbose, false)?;
+        /* match node {
+            ASTNode::Number(_) | ASTNode::String(_) | ASTNode::Float(_) | 
+            ASTNode::Boolean(_) | ASTNode::Array(_) => {
+                println!("{}", value);
+            },
+            _ => {}
+        } */
+        result = Some(value);
     }
 
     Ok(result)

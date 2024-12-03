@@ -305,6 +305,14 @@ impl<'a> Parser<'a> {
                 Ok(node)
             },
             Token::Import => self.parse_import(),
+            Token::Number(_) | Token::String(_) | Token::Float(_) | 
+            Token::Boolean(_) | Token::LBracket => {
+                let expr = self.parse_expr()?;
+                /* if self.current_token == Token::Semicolon {
+                    self.eat(Token::Semicolon)?;
+                } */
+                Ok(expr)
+            },
             Token::Identifier(name) => {
                 let name = name.clone();
                 self.eat(Token::Identifier(name.clone()))?;

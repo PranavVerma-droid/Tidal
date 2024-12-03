@@ -4,11 +4,11 @@ use super::Library;
 use crate::error::Error;
 use crate::parser::Value;
 use std::collections::HashMap;
+use crate::parser::Parser;
 
 pub struct StdLib {
     functions: HashMap<String, Box<dyn Fn(Vec<Value>) -> Result<Value, Error>>>,
     constants: HashMap<String, Value>,
-    // Add mutability tracking
     var_mutability: HashMap<String, bool>,
 }
 
@@ -255,6 +255,29 @@ impl StdLib {
             match &args[0] {
                 Value::String(s) => Ok(Value::String(s.trim().to_string())),
                 _ => Err(Error::TypeError("strip() requires string argument".to_string()))
+            }
+        }));
+
+        self.functions.insert("eval".to_string(), Box::new(|args| {
+            if args.len() != 1 {
+                return Err(Error::TypeError("eval() takes exactly 1 argument".to_string()));
+            }
+
+            match &args[0] {
+                Value::String(code) => {
+                    let mut parser = Parser::new(code);
+                    match parser.parse() {
+                        Ok(ast) => {
+                            match crate::interpreter::interpret(ast, false) {
+                                Ok(Some(val)) => Ok(val),
+                                Ok(None) => Ok(Value::Null),
+                                Err(e) => Err(Error::InterpreterError(format!("Eval failed: {}", e)))
+                            }
+                        },
+                        Err(e) => Err(Error::InterpreterError(format!("Eval parsing failed: {}", e)))
+                    }
+                },
+                _ => Err(Error::TypeError("eval() requires a string argument".to_string()))
             }
         }));
     }
