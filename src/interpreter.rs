@@ -611,6 +611,71 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                                 _ => Err(Error::UnsupportedOperation(format!("Unsupported operator for types"))),
                             }
                         }
+                        (Value::Array(arr1), Value::Array(arr2)) => {
+                            match op {
+                                Token::Plus => {
+                                    let guard1 = arr1.lock().unwrap();
+                                    let guard2 = arr2.lock().unwrap();
+                                    let mut new_vec = guard1.clone();
+                                    new_vec.extend(guard2.clone());
+                                    Ok(Value::Array(Arc::new(Mutex::new(new_vec))))
+                                },
+                                Token::Equal | Token::NotEqual | 
+                                Token::Greater | Token::Less |
+                                Token::GreaterEqual | Token::LessEqual => {
+                                    let guard1 = arr1.lock().unwrap();
+                                    let guard2 = arr2.lock().unwrap();
+                                    
+                                    if !guard1.is_empty() && !guard2.is_empty() {
+                                        let type1 = type_str_of_value(&guard1[0]);
+                                        let type2 = type_str_of_value(&guard2[0]);
+                                        if type1 != type2 {
+                                            return Err(Error::TypeError(
+                                                format!("Cannot compare arrays of different types: {} and {}", type1, type2)
+                                            ));
+                                        }
+                                    }
+                                    
+                                    match op {
+                                        Token::Equal => Ok(Value::Boolean(guard1.len() == guard2.len() && 
+                                            guard1.iter().zip(guard2.iter()).all(|(a, b)| a == b))),
+                                        Token::NotEqual => Ok(Value::Boolean(!(guard1.len() == guard2.len() && 
+                                            guard1.iter().zip(guard2.iter()).all(|(a, b)| a == b)))),
+                                        Token::Greater => Ok(Value::Boolean(guard1.len() > 0 && guard2.len() > 0 &&
+                                            guard1.iter().zip(guard2.iter())
+                                                .find(|(a, b)| a != b)
+                                                .map_or(guard1.len() > guard2.len(), |(a, b)| a > b))),
+                                        Token::Less => Ok(Value::Boolean(guard1.len() > 0 && guard2.len() > 0 &&
+                                            guard1.iter().zip(guard2.iter())
+                                                .find(|(a, b)| a != b)
+                                                .map_or(guard1.len() < guard2.len(), |(a, b)| a < b))),
+                                        Token::GreaterEqual => Ok(Value::Boolean(guard1.len() > 0 && guard2.len() > 0 &&
+                                            guard1.iter().zip(guard2.iter())
+                                                .find(|(a, b)| a != b)
+                                                .map_or(guard1.len() >= guard2.len(), |(a, b)| a >= b))),
+                                        Token::LessEqual => Ok(Value::Boolean(guard1.len() > 0 && guard2.len() > 0 &&
+                                            guard1.iter().zip(guard2.iter())
+                                                .find(|(a, b)| a != b)
+                                                .map_or(guard1.len() <= guard2.len(), |(a, b)| a <= b))),
+                                        _ => unreachable!()
+                                    }
+                                },
+                                _ => Err(Error::UnsupportedOperation("Unsupported operator for arrays".to_string())),
+                            }
+                        },
+                        (Value::Array(arr), Value::Number(n)) | (Value::Number(n), Value::Array(arr)) => {
+                            match op {
+                                Token::Multiply => {
+                                    let guard = arr.lock().unwrap();
+                                    let mut new_vec = Vec::new();
+                                    for _ in 0..n {
+                                        new_vec.extend(guard.clone());
+                                    }
+                                    Ok(Value::Array(Arc::new(Mutex::new(new_vec))))
+                                },
+                                _ => Err(Error::UnsupportedOperation("Arrays can only be multiplied by numbers".to_string())),
+                            }
+                        },
                         _ => Err(Error::UnsupportedOperation(format!("Unsupported operation for given types"))),
                     }
                 }

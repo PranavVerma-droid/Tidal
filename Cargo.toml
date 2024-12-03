@@ -3,7 +3,6 @@ name = "Tidal"
 version = "1.10.0"
 edition = "2021"
 
-
 [dependencies]
 lazy_static = "1.4.0"
 sys-info = { version = "0.9", optional = true }
@@ -15,6 +14,10 @@ unix = ["sys-info"]
 [profile.release]
 lto = true
 overflow-checks = true
+
+[profile.dev]
+lto = false
+overflow-checks = false
 
 [[bin]]
 name = "td"     
