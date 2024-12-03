@@ -62,6 +62,17 @@ pub struct Environment {
     parent: Option<Box<Environment>>,
 }
 
+impl Clone for Environment {
+    fn clone(&self) -> Self {
+        Environment {
+            scopes: self.scopes.clone(),
+            functions: self.functions.clone(),
+            in_function: self.in_function,
+            libraries: self.libraries.iter().map(|(k, v)| (k.clone(), v.box_clone())).collect(),
+            parent: self.parent.clone(),
+        }
+    }
+}
 
 impl Environment {
     pub fn new() -> Self {
@@ -143,6 +154,22 @@ impl Environment {
             return parent.has_library(name);
         }
         false
+    }
+
+    /* pub fn get_library(&self, name: &str) -> Option<&Box<dyn Library>> {
+        if let Some(lib) = self.libraries.get(name) {
+            return Some(lib);
+        }
+        if let Some(parent) = &self.parent {
+            return parent.get_library(name);
+        }
+        None
+    } */
+
+    pub fn clone_libraries_from(&mut self, other: &Environment) {
+        for (name, lib) in &other.libraries {
+            self.libraries.insert(name.clone(), lib.box_clone());
+        }
     }
 
     pub fn import_library(&mut self, name: &str, mode: Option<&str>) -> Result<(), Error> {
@@ -236,6 +263,7 @@ pub struct ExternalLibrary {
     variables: HashMap<String, (Value, bool)>,
     ast: Vec<ASTNode>,
     is_initialized: bool,
+    env: Environment,
 }
 
 impl ExternalLibrary {
@@ -245,6 +273,7 @@ impl ExternalLibrary {
             variables: HashMap::new(),
             ast,
             is_initialized: false,
+            env: Environment::new(),
         }
     }
 
@@ -253,19 +282,23 @@ impl ExternalLibrary {
             return Ok(());
         }
 
-        let mut env = Environment::new();
-        env.in_function = false;
+        self.env.in_function = false;
 
         for node in &self.ast {
             match node {
+                ASTNode::Import(name, mode) => {
+                    self.env.import_library(name, mode.as_deref())?;
+                },
                 ASTNode::FunctionDecl(name, params, body) => {
                     let params = params.clone();
                     let body = body.clone();
                     let func_name = name.clone();
+                    let env_clone = self.env.clone();
                     
                     let function = Box::new(move |args: Vec<Value>| -> Result<Value, Error> {
                         let mut func_env = Environment::new();
                         func_env.in_function = true;
+                        func_env.clone_libraries_from(&env_clone);
 
                         if args.len() != params.len() {
                             return Err(Error::InvalidFunctionArguments(
@@ -293,7 +326,7 @@ impl ExternalLibrary {
                 }
                 ASTNode::Var(name, expr_opt, is_mutable) => {
                     if let Some(expr) = expr_opt {
-                        if let Ok(value) = interpret_node(expr, &mut env, false, false) {
+                        if let Ok(value) = interpret_node(expr, &mut self.env, false, false) {
                             self.variables.insert(name.clone(), (value, *is_mutable));
                         }
                     } else {
@@ -326,6 +359,7 @@ impl Library for ExternalLibrary {
     fn box_clone(&self) -> Box<dyn Library> {
         let mut new_lib = ExternalLibrary::new(self.ast.clone());
         new_lib.variables = self.variables.clone();
+        new_lib.env = self.env.clone();
         new_lib.initialize().unwrap();
         Box::new(new_lib)
     }
@@ -713,7 +747,6 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 (Value::Array(arr), Value::Number(i)) => {
                     let guard = arr.lock().unwrap();
                     let len = guard.len() as i32;
-                    // Convert negative index to positive
                     let idx = if i < 0 { len + i } else { i };
                     if idx < 0 || idx >= len {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds")));
@@ -722,7 +755,7 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
                 },
                 (Value::String(s), Value::Number(i)) => {
                     let len = s.chars().count() as i32;
-                    // Convert negative index to positive
+
                     let idx = if i < 0 { len + i } else { i };
                     if idx < 0 || idx >= len {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds")));
@@ -1229,13 +1262,13 @@ fn normalize_slice_indices(start: Option<i32>, stop: Option<i32>, len: i32) -> (
     let start = match start {
         Some(n) if n < 0 => len + n,
         Some(n) => n,
-        None => if stop.is_some() { 0 } else { len - 1 }  // Changed
+        None => if stop.is_some() { 0 } else { len - 1 }
     };
 
     let stop = match stop {
         Some(n) if n < 0 => len + n,
         Some(n) => n,
-        None => if start >= 0 { len } else { -1 }  // Changed to handle negative step
+        None => if start >= 0 { len } else { -1 } 
     };
 
     (start, stop)
@@ -1252,7 +1285,7 @@ fn get_source_var_mutability(expr: &ASTNode, env: &Environment) -> Option<(Strin
 
 fn check_array_mutability(expr: &ASTNode, env: &Environment, target_name: &str) -> Result<(), Error> {
     if let Some((_, src_mutable)) = get_source_var_mutability(expr, env) {
-        if !src_mutable {  // Removed unnecessary parentheses
+        if !src_mutable {
             return Err(Error::TypeError(
                 format!("Cannot assign immutable array to mutable variable '{}'", target_name)
             ));

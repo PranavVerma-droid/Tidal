@@ -308,9 +308,9 @@ impl<'a> Parser<'a> {
             Token::Number(_) | Token::String(_) | Token::Float(_) | 
             Token::Boolean(_) | Token::LBracket => {
                 let expr = self.parse_expr()?;
-                /* if self.current_token == Token::Semicolon {
+                if self.current_token == Token::Semicolon {
                     self.eat(Token::Semicolon)?;
-                } */
+                }
                 Ok(expr)
             },
             Token::Identifier(name) => {
