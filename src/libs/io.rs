@@ -22,7 +22,7 @@ impl Library for IOLib {
         self.constants.get(name)
     }
 
-    fn is_mutable(&self, name: &str) -> Option<bool> {
+    fn is_mutable(&self, _name: &str) -> Option<bool> {
         None
     }
 

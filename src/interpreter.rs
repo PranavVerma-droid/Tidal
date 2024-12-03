@@ -1,13 +1,15 @@
-use crate::parser::{ASTNode, Value};
+use crate::parser::{ASTNode, Value, Parser};
 use crate::lexer::Token;
 use crate::error::Error;
-use crate::parser::Parser;
+
 use crate::libs::Library;
 use crate::libs::std::StdLib;
 use crate::libs::math::MathLib;
 use crate::libs::sys::SysLib;
 use crate::libs::os::OSLib;
 use crate::libs::io::IOLib;
+use crate::libs::mem::MemLib;
+
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -169,6 +171,9 @@ impl Environment {
                         }
                         "io" => {
                             self.libraries.insert(name.to_string(), Box::new(IOLib::new()));
+                        }
+                        "mem" => {
+                            self.libraries.insert(name.to_string(), Box::new(MemLib::new()));
                         }
                         _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
                     };
