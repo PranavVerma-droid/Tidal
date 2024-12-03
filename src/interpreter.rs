@@ -7,6 +7,7 @@ use crate::libs::std::StdLib;
 use crate::libs::math::MathLib;
 use crate::libs::sys::SysLib;
 use crate::libs::os::OSLib;
+use crate::libs::io::IOLib;
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -165,6 +166,9 @@ impl Environment {
                         }
                         "os" => {
                             self.libraries.insert(name.to_string(), Box::new(OSLib::new()));
+                        }
+                        "io" => {
+                            self.libraries.insert(name.to_string(), Box::new(IOLib::new()));
                         }
                         _ => return Err(Error::InterpreterError("Embedded library not found".to_string()))
                     };

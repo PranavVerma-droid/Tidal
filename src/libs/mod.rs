@@ -2,6 +2,7 @@ pub mod std;
 pub mod math;
 pub mod sys;
 pub mod os;
+pub mod io;
 
 use crate::error::Error;
 use crate::parser::Value;
