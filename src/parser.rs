@@ -83,6 +83,7 @@ pub enum ASTNode {
     Import(String, Option<String>),
     LibraryAccess(String, String), 
     LibraryFunctionCall(String, String, Vec<ASTNode>),
+    Slice(Box<ASTNode>, Option<Box<ASTNode>>, Option<Box<ASTNode>>, Option<Box<ASTNode>>), // expr, start, stop, step
 }
 
 #[derive(Clone)]
@@ -860,9 +861,44 @@ impl<'a> Parser<'a> {
 
     fn parse_index(&mut self, expr: ASTNode) -> Result<ASTNode, Error> {
         self.eat(Token::LBracket)?;
-        let index = self.parse_expr()?;
+        
+        // Check if it's a slice operation
+        let first_expr = if self.current_token == Token::Colon {
+            None
+        } else {
+            Some(Box::new(self.parse_expr()?))
+        };
+
+        if self.current_token == Token::Colon {
+            self.eat(Token::Colon)?;
+            
+            // Parse stop
+            let second_expr = if self.current_token == Token::Colon || self.current_token == Token::RBracket {
+                None
+            } else {
+                Some(Box::new(self.parse_expr()?))
+            };
+
+            // Parse step if present
+            let third_expr = if self.current_token == Token::Colon {
+                self.eat(Token::Colon)?;
+                if self.current_token == Token::RBracket {
+                    None
+                } else {
+                    Some(Box::new(self.parse_expr()?))
+                }
+            } else {
+                None
+            };
+
+            self.eat(Token::RBracket)?;
+            return Ok(ASTNode::Slice(Box::new(expr), first_expr, second_expr, third_expr));
+        }
+
+        // Regular index access - fixed the double boxing issue
+        let index = first_expr.unwrap();  // Already a Box<ASTNode>
         self.eat(Token::RBracket)?;
-        Ok(ASTNode::Index(Box::new(expr), Box::new(index)))
+        Ok(ASTNode::Index(Box::new(expr), index))
     }
 
     fn parse_type_cast(&mut self, type_name: String) -> Result<ASTNode, Error> {

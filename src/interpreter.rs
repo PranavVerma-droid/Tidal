@@ -695,18 +695,115 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
             match (array, index) {
                 (Value::Array(arr), Value::Number(i)) => {
                     let guard = arr.lock().unwrap();
-                    if i < 0 || i >= guard.len() as i32 {
+                    let len = guard.len() as i32;
+                    // Convert negative index to positive
+                    let idx = if i < 0 { len + i } else { i };
+                    if idx < 0 || idx >= len {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds")));
                     }
-                    Ok(guard[i as usize].clone())
+                    Ok(guard[idx as usize].clone())
                 },
                 (Value::String(s), Value::Number(i)) => {
-                    if i < 0 || i >= s.len() as i32 {
+                    let len = s.chars().count() as i32;
+                    // Convert negative index to positive
+                    let idx = if i < 0 { len + i } else { i };
+                    if idx < 0 || idx >= len {
                         return Err(Error::IndexOutOfBounds(format!("Index out of bounds")));
                     }
-                    Ok(Value::String(s.chars().nth(i as usize).unwrap().to_string()))
+                    Ok(Value::String(s.chars().nth(idx as usize).unwrap().to_string()))
                 },
                 _ => Err(Error::TypeError(format!("Invalid indexing operation"))),
+            }
+        },
+        ASTNode::Slice(expr, start, stop, step) => {
+            let value = interpret_node(expr, env, is_verbose, in_loop)?;
+            let start_idx = if let Some(expr) = start {
+                match interpret_node(expr, env, is_verbose, in_loop)? {
+                    Value::Number(n) => Some(n),
+                    _ => return Err(Error::TypeError("Slice start index must be an integer".to_string()))
+                }
+            } else {
+                None
+            };
+
+            let stop_idx = if let Some(expr) = stop {
+                match interpret_node(expr, env, is_verbose, in_loop)? {
+                    Value::Number(n) => Some(n),
+                    _ => return Err(Error::TypeError("Slice stop index must be an integer".to_string()))
+                }
+            } else {
+                None
+            };
+
+            let step_val = if let Some(expr) = step {
+                match interpret_node(expr, env, is_verbose, in_loop)? {
+                    Value::Number(n) => {
+                        if n == 0 {
+                            return Err(Error::TypeError("Slice step cannot be zero".to_string()));
+                        }
+                        n
+                    },
+                    _ => return Err(Error::TypeError("Slice step must be an integer".to_string()))
+                }
+            } else {
+                1
+            };
+
+            match value {
+                Value::Array(arr) => {
+                    let guard = arr.lock().unwrap();
+                    let len = guard.len() as i32;
+                    let (start, stop) = normalize_slice_indices(start_idx, stop_idx, len);
+                    
+                    let mut result = Vec::new();
+                    if step_val > 0 {
+                        let mut i = start;
+                        while i < stop {
+                            if i >= 0 && i < len {
+                                result.push(guard[i as usize].clone());
+                            }
+                            i += step_val;
+                        }
+                    } else {  // Negative step
+                        let mut i = if start_idx.is_none() { len - 1 } else { start };
+                        let stop = if stop_idx.is_none() { -1 } else { stop };
+                        while i > stop {
+                            if i >= 0 && i < len {
+                                result.push(guard[i as usize].clone());
+                            }
+                            i += step_val;
+                        }
+                    }
+                    Ok(Value::Array(Arc::new(Mutex::new(result))))
+                },
+                Value::String(s) => {
+                    let len = s.chars().count() as i32;
+                    let (start, stop) = normalize_slice_indices(start_idx, stop_idx, len);
+                    
+                    let chars: Vec<char> = s.chars().collect();
+                    let mut result = String::new();
+                    
+                    if step_val > 0 {
+                        let mut i = start;
+                        while i < stop {
+                            if i >= 0 && i < len {
+                                result.push(chars[i as usize]);
+                            }
+                            i += step_val;
+                        }
+                    } else {  // Negative step
+                        let mut i = if start_idx.is_none() { len - 1 } else { start };
+                        let stop = if stop_idx.is_none() { -1 } else { stop };
+                        while i > stop {
+                            if i >= 0 && i < len {
+                                result.push(chars[i as usize]);
+                            }
+                            i += step_val;
+                        }
+                    }
+                    Ok(Value::String(result))
+                },
+                _ => Err(Error::TypeError("Cannot slice this type".to_string()))
             }
         },
         ASTNode::FunctionCall(name, args) => {
@@ -1111,6 +1208,22 @@ fn interpret_node(node: &ASTNode, env: &mut Environment, is_verbose: bool, in_lo
     result
 }
 
+fn normalize_slice_indices(start: Option<i32>, stop: Option<i32>, len: i32) -> (i32, i32) {
+    let start = match start {
+        Some(n) if n < 0 => len + n,
+        Some(n) => n,
+        None => if stop.is_some() { 0 } else { len - 1 }  // Changed
+    };
+
+    let stop = match stop {
+        Some(n) if n < 0 => len + n,
+        Some(n) => n,
+        None => if start >= 0 { len } else { -1 }  // Changed to handle negative step
+    };
+
+    (start, stop)
+}
+
 fn get_source_var_mutability(expr: &ASTNode, env: &Environment) -> Option<(String, bool)> {
     if let ASTNode::Identifier(name) = expr {
         if let Some((_, mutable)) = env.get(name) {
@@ -1122,7 +1235,7 @@ fn get_source_var_mutability(expr: &ASTNode, env: &Environment) -> Option<(Strin
 
 fn check_array_mutability(expr: &ASTNode, env: &Environment, target_name: &str) -> Result<(), Error> {
     if let Some((_, src_mutable)) = get_source_var_mutability(expr, env) {
-        if !src_mutable {
+        if !src_mutable {  // Removed unnecessary parentheses
             return Err(Error::TypeError(
                 format!("Cannot assign immutable array to mutable variable '{}'", target_name)
             ));

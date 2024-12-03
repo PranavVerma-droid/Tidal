@@ -57,6 +57,7 @@ pub enum Token {
     External,
     Embedded,
     Dot,
+    Colon,
     EOF,
 }
 
@@ -122,6 +123,7 @@ impl<'a> Lexer<'a> {
                 }
             },
             Some('.') => Ok(Token::Dot),
+            Some(':') => Ok(Token::Colon),
             Some(ch) => match ch {
                 '0'..='9' => self.read_number(ch),
                 '+' => Ok(Token::Plus),
