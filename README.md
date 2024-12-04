@@ -37,11 +37,15 @@ The Sample Code Along with the Basic Syntax Can be Found in the [Code Examples](
 ### Compile
 For Unix systems:
 ```bash
+cargo clean
+cargo run --features unix
 cargo build --release --features unix
 ```
 
 For Windows Systems:
 ```bash
+cargo clean
+cargo run
 cargo build --release
 ```
 

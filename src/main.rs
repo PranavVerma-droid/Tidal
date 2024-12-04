@@ -10,10 +10,32 @@ mod lexer;
 mod parser;
 mod error;
 mod libs;
+mod docs;
 
 fn main() {
-    // collect args
     let args: Vec<String> = env::args().collect();
+
+    // docs command
+    if args.contains(&String::from("docs")) {
+        match docs::fetch_docs() {
+            Ok(pages) => {
+                if let Some(pg_idx) = args.iter().position(|x| x == "--pg") {
+                    if let Some(pg_num) = args.get(pg_idx + 1) {
+                        if let Ok(num) = pg_num.parse::<usize>() {
+                            docs::display_docs(&pages, num);
+                            return;
+                        }
+                    }
+                }
+                docs::list_pages(&pages);
+                return;
+            }
+            Err(e) => {
+                eprintln!("Error fetching documentation: {}", e);
+                process::exit(1);
+            }
+        }
+    }
 
     // verbose mode flag check
     let is_verbose = args.contains(&String::from("--verbose")) || args.contains(&String::from("-v"));
@@ -81,6 +103,7 @@ fn help() {
     println!("Options:");
     println!("  --verbose, -v      Enable verbose output");
     println!("  help, --help, -h   Display this help message");
+    println!("  docs               Display Built-in Docs.");
     println!("");
 }
 

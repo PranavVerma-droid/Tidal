@@ -1,11 +1,16 @@
 [package]
 name = "Tidal"
-version = "1.11.0"
+version = "1.12.0"
 edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"
 sys-info = { version = "0.9", optional = true }
+reqwest = { version = "0.11", features = ["blocking"] }
+include_dir = "0.7"
+termimad = "0.20"
+colored = "2.0"
+rust-embed = "6.4"
 
 [features]
 default = []
@@ -21,4 +26,7 @@ overflow-checks = false
 
 [[bin]]
 name = "td"     
-path = "src/main.rs"  
+path = "src/main.rs"
+
+[build-dependencies]
+reqwest = { version = "0.11", features = ["blocking"] }

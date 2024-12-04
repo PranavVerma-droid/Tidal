@@ -16,7 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Clean
+      run: cargo clean
     - name: Build
-      run: cargo build --verbose --features unix
+      run: cargo run --verbose --features unix
     - name: Run tests
       run: cargo test --verbose --features unix
