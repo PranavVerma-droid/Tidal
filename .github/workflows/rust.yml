@@ -19,6 +19,6 @@ jobs:
     - name: Clean
       run: cargo clean
     - name: Build
-      run: cargo run --verbose --features unix
+      run: cargo build --verbose --features unix
     - name: Run tests
       run: cargo test --verbose --features unix
